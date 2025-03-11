@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>待办事项管理工具 v1.05</title>
+    <title>待办事项管理工具 v1.06</title>
     <!-- Material Icons -->
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <!-- Firebase SDK -->
@@ -2210,57 +2210,67 @@
                     }
                 }
                 
-                // v1.05: 新增恢复任务排序的函数
-                function restoreTaskOrder() {
-                    try {
-                        // 获取保存的排序
-                        const savedOrder = localStorage.getItem('taskOrder');
-                        if (!savedOrder) {
-                            console.log('没有找到保存的排序信息');
-                            return;
-                        }
-                        
-                        const orderIds = JSON.parse(savedOrder);
-                        if (!Array.isArray(orderIds) || orderIds.length === 0) {
-                            console.log('排序信息为空或格式错误');
-                            return;
-                        }
-                        
-                        console.log('找到保存的排序信息，任务ID数:', orderIds.length);
-                        
-                        // 区分已完成和未完成任务
-                        const incompleteTasks = tasks.filter(task => !task.completed);
-                        const completedTasks = tasks.filter(task => task.completed);
-                        
-                        // 创建一个新的任务数组，按照保存的顺序排列
-                        const orderedTasks = [];
-                        
-                        // 先按保存的顺序添加未完成的任务
-                        orderIds.forEach(id => {
-                            const task = incompleteTasks.find(t => t.id === id);
-                            if (task) {
-                                orderedTasks.push(task);
-                            }
-                        });
-                        
-                        // 添加其他未排序的未完成任务
-                        incompleteTasks.forEach(task => {
-                            if (!orderedTasks.includes(task)) {
-                                orderedTasks.push(task);
-                            }
-                        });
-                        
-                        // 最后添加已完成的任务
-                        completedTasks.forEach(task => {
-                            orderedTasks.push(task);
-                        });
-                        
-                        // 更新任务数组
-                        tasks = orderedTasks;
-                        console.log('成功恢复任务排序，总任务数:', tasks.length);
-                    } catch (e) {
-                        console.error('恢复任务排序失败:', e);
+                // v1.06: 修改为使用统一的设备标识符
+                const DEVICE_ID_KEY = 'todo_app_device_id';
+                
+                // 获取或创建设备标识符
+                function getDeviceId() {
+                    let deviceId = localStorage.getItem(DEVICE_ID_KEY);
+                    if (!deviceId) {
+                        // 创建一个随机的设备标识符
+                        deviceId = 'device_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                        localStorage.setItem(DEVICE_ID_KEY, deviceId);
+                        console.log('创建新的设备标识符:', deviceId);
                     }
+                    return deviceId;
+                }
+                
+                // v1.05: 新增保存任务顺序的函数
+                function saveTaskOrder() {
+                    // 获取当前所有任务项的索引顺序
+                    const taskIndexes = Array.from(taskList.querySelectorAll('.task-item')).map(item => {
+                        return parseInt(item.getAttribute('data-index'));
+                    });
+                    
+                    // 根据索引顺序重新排列任务
+                    const orderedTasks = [];
+                    taskIndexes.forEach(index => {
+                        if (index >= 0 && index < tasks.length) {
+                            orderedTasks.push(tasks[index]);
+                        }
+                    });
+                    
+                    // 区分已完成和未完成任务
+                    const incompleteTasks = tasks.filter(task => !task.completed);
+                    const completedTasks = tasks.filter(task => task.completed);
+                    
+                    // 保存新的排序到任务数组
+                    tasks = [
+                        ...orderedTasks.filter(task => !task.completed), 
+                        ...completedTasks.filter(task => !orderedTasks.includes(task))
+                    ];
+                    
+                    // v1.06: 保存排序到Firebase，解决跨平台同步问题
+                    const orderIds = tasks.filter(task => !task.completed).map(task => task.id);
+                    
+                    // 1. 保存到本地存储
+                    localStorage.setItem('taskOrder', JSON.stringify(orderIds));
+                    
+                    // 2. 保存到Firebase中的排序节点
+                    const deviceId = getDeviceId();
+                    const orderRef = firebase.database().ref(`orders/${deviceId}`);
+                    orderRef.set({ 
+                        taskOrder: orderIds,
+                        lastUpdated: new Date().toISOString()
+                    }).catch(error => {
+                        console.error('保存排序到Firebase失败:', error);
+                    });
+                    
+                    // 3. 保存任务数据
+                    saveTasks().then(() => {
+                        // 更新统计
+                        updateStats();
+                    });
                 }
                 
                 // 保存任务
@@ -2800,42 +2810,6 @@
                     });
                 }
                 
-                // v1.05: 新增保存任务顺序的函数
-                function saveTaskOrder() {
-                    // 获取当前所有任务项的索引顺序
-                    const taskIndexes = Array.from(taskList.querySelectorAll('.task-item')).map(item => {
-                        return parseInt(item.getAttribute('data-index'));
-                    });
-                    
-                    // 根据索引顺序重新排列任务
-                    const orderedTasks = [];
-                    taskIndexes.forEach(index => {
-                        if (index >= 0 && index < tasks.length) {
-                            orderedTasks.push(tasks[index]);
-                        }
-                    });
-                    
-                    // 区分已完成和未完成任务
-                    const incompleteTasks = tasks.filter(task => !task.completed);
-                    const completedTasks = tasks.filter(task => task.completed);
-                    
-                    // 保存新的排序到任务数组
-                    tasks = [
-                        ...orderedTasks.filter(task => !task.completed), 
-                        ...completedTasks.filter(task => !orderedTasks.includes(task))
-                    ];
-                    
-                    // 保存排序标识符
-                    const orderIds = tasks.filter(task => !task.completed).map(task => task.id);
-                    localStorage.setItem('taskOrder', JSON.stringify(orderIds));
-                    
-                    // 保存到数据库
-                    saveTasks().then(() => {
-                        // 更新统计
-                        updateStats();
-                    });
-                }
-                
                 // 渲染历史任务列表
                 function renderHistoryTasks() {
                     const historyTaskList = document.getElementById('history-task-list');
@@ -3317,23 +3291,64 @@
                     });
                 };
                 
-                // v1.05: 验证保存的排序是否与当前任务匹配
+                // v1.06: 更新验证保存的排序是否与当前任务匹配
                 function validateSavedOrder() {
                     try {
+                        // 获取设备ID
+                        const deviceId = getDeviceId();
+                        
+                        // 验证本地存储的排序
                         const savedOrder = localStorage.getItem('taskOrder');
-                        if (!savedOrder) return;
-                        
-                        const orderIds = JSON.parse(savedOrder);
-                        if (!Array.isArray(orderIds)) return;
-                        
-                        // 检查是否所有排序ID都在当前任务中
-                        const validIds = orderIds.filter(id => tasks.some(task => task.id === id));
-                        
-                        // 如果有效ID少于保存的ID，更新排序
-                        if (validIds.length < orderIds.length) {
-                            console.log('排序信息与当前任务不匹配，更新排序');
-                            localStorage.setItem('taskOrder', JSON.stringify(validIds));
+                        if (savedOrder) {
+                            const orderIds = JSON.parse(savedOrder);
+                            if (Array.isArray(orderIds)) {
+                                // 检查是否所有排序ID都在当前任务中
+                                const validIds = orderIds.filter(id => tasks.some(task => task.id === id));
+                                
+                                // 如果有效ID少于保存的ID，更新排序
+                                if (validIds.length < orderIds.length) {
+                                    console.log('本地排序信息与当前任务不匹配，更新排序');
+                                    localStorage.setItem('taskOrder', JSON.stringify(validIds));
+                                    
+                                    // 同时更新Firebase中的排序
+                                    firebase.database().ref(`orders/${deviceId}`).set({ 
+                                        taskOrder: validIds,
+                                        lastUpdated: new Date().toISOString()
+                                    }).catch(error => {
+                                        console.error('更新Firebase排序失败:', error);
+                                    });
+                                }
+                            }
                         }
+                        
+                        // 验证Firebase中存储的排序
+                        firebase.database().ref(`orders/${deviceId}`).once('value')
+                            .then(snapshot => {
+                                const data = snapshot.val();
+                                if (data && data.taskOrder && Array.isArray(data.taskOrder)) {
+                                    // 检查是否所有排序ID都在当前任务中
+                                    const validIds = data.taskOrder.filter(id => tasks.some(task => task.id === id));
+                                    
+                                    // 如果有效ID少于保存的ID，更新排序
+                                    if (validIds.length < data.taskOrder.length) {
+                                        console.log('Firebase排序信息与当前任务不匹配，更新排序');
+                                        
+                                        // 更新Firebase中的排序
+                                        firebase.database().ref(`orders/${deviceId}`).update({ 
+                                            taskOrder: validIds,
+                                            lastUpdated: new Date().toISOString()
+                                        }).catch(error => {
+                                            console.error('更新Firebase排序失败:', error);
+                                        });
+                                        
+                                        // 同时更新本地存储
+                                        localStorage.setItem('taskOrder', JSON.stringify(validIds));
+                                    }
+                                }
+                            })
+                            .catch(error => {
+                                console.error('验证Firebase排序时出错:', error);
+                            });
                     } catch (e) {
                         console.error('验证排序时出错:', e);
                     }
@@ -3716,8 +3731,22 @@
                             });
                             break;
                         case 'priority':
-                            const priorityOrder = { urgent: 0, high: 1, medium: 2, low: 3 };
-                            tasks.sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
+                            // v1.06: 修正优先级排序顺序，从紧急到低优先级
+                            tasksToSort.sort((a, b) => {
+                                // 定义优先级顺序（从高到低）
+                                const order = ['urgent', 'high', 'medium', 'low'];
+                                
+                                // 获取优先级索引
+                                const indexA = order.indexOf(a.priority);
+                                const indexB = order.indexOf(b.priority);
+                                
+                                // 确保未定义的优先级排在最后
+                                const valueA = indexA === -1 ? order.length : indexA;
+                                const valueB = indexB === -1 ? order.length : indexB;
+                                
+                                // 比较优先级 (较小的索引值表示较高优先级，所以保持原顺序即可)
+                                return valueA - valueB;
+                            });
                             break;
                         case 'name':
                             tasks.sort((a, b) => a.text.localeCompare(b.text));
@@ -4058,7 +4087,98 @@
                     
                     return container;
                 }
-            });
+
+                // 这是文件的最后一行，在这里添加新函数
+                
+                // v1.06: 修改的恢复任务排序函数，支持跨平台
+                function restoreTaskOrder() {
+                    try {
+                        // 先尝试从Firebase获取排序
+                        const deviceId = getDeviceId();
+                        firebase.database().ref(`orders/${deviceId}`).once('value')
+                            .then(snapshot => {
+                                const data = snapshot.val();
+                                if (data && data.taskOrder && Array.isArray(data.taskOrder)) {
+                                    console.log('从Firebase恢复排序，任务ID数:', data.taskOrder.length);
+                                    applyTaskOrder(data.taskOrder);
+                                } else {
+                                    // 如果Firebase中没有，则尝试从本地存储恢复
+                                    const savedOrder = localStorage.getItem('taskOrder');
+                                    if (!savedOrder) {
+                                        console.log('没有找到保存的排序信息');
+                                        return;
+                                    }
+                                    
+                                    const orderIds = JSON.parse(savedOrder);
+                                    if (!Array.isArray(orderIds) || orderIds.length === 0) {
+                                        console.log('排序信息为空或格式错误');
+                                        return;
+                                    }
+                                    
+                                    console.log('从本地存储恢复排序，任务ID数:', orderIds.length);
+                                    applyTaskOrder(orderIds);
+                                    
+                                    // 将本地排序同步到Firebase
+                                    firebase.database().ref(`orders/${deviceId}`).set({ 
+                                        taskOrder: orderIds,
+                                        lastUpdated: new Date().toISOString()
+                                    }).catch(error => {
+                                        console.error('保存排序到Firebase失败:', error);
+                                    });
+                                }
+                            })
+                            .catch(error => {
+                                console.error('从Firebase恢复排序失败:', error);
+                                
+                                // 如果Firebase访问失败，尝试从本地恢复
+                                const savedOrder = localStorage.getItem('taskOrder');
+                                if (savedOrder) {
+                                    const orderIds = JSON.parse(savedOrder);
+                                    if (Array.isArray(orderIds) && orderIds.length > 0) {
+                                        console.log('从本地存储恢复排序，任务ID数:', orderIds.length);
+                                        applyTaskOrder(orderIds);
+                                    }
+                                }
+                            });
+                    } catch (e) {
+                        console.error('恢复任务排序失败:', e);
+                    }
+                }
+                
+                // v1.06: 应用任务排序的辅助函数
+                function applyTaskOrder(orderIds) {
+                    // 区分已完成和未完成任务
+                    const incompleteTasks = tasks.filter(task => !task.completed);
+                    const completedTasks = tasks.filter(task => task.completed);
+                    
+                    // 创建一个新的任务数组，按照保存的顺序排列
+                    const orderedTasks = [];
+                    
+                    // 先按保存的顺序添加未完成的任务
+                    orderIds.forEach(id => {
+                        const task = incompleteTasks.find(t => t.id === id);
+                        if (task) {
+                            orderedTasks.push(task);
+                        }
+                    });
+                    
+                    // 添加其他未排序的未完成任务
+                    incompleteTasks.forEach(task => {
+                        if (!orderedTasks.includes(task)) {
+                            orderedTasks.push(task);
+                        }
+                    });
+                    
+                    // 最后添加已完成的任务
+                    completedTasks.forEach(task => {
+                        orderedTasks.push(task);
+                    });
+                    
+                    // 更新任务数组
+                    tasks = orderedTasks;
+                    console.log('成功应用任务排序，总任务数:', tasks.length);
+                }
+            }); // 这是闭包的结束括号，保留它
         </script>
     </div>
 </body>
