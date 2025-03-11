@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>待办事项管理工具</title>
+    <title>待办事项管理工具 v1.04</title>
+    <!-- Material Icons -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
@@ -1453,6 +1455,149 @@
                 gap: 10px;
             }
         }
+        
+        /* 统计面板样式 - v1.04新增 */
+        .stats-panel {
+            background-color: #fff;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 30px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            animation: fadeIn 0.5s ease;
+        }
+        
+        .stats-panel h3 {
+            font-size: 16px;
+            margin-bottom: 15px;
+            color: #333;
+            display: flex;
+            align-items: center;
+        }
+        
+        .stats-panel h3 i {
+            margin-right: 8px;
+            color: #2196F3;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-card {
+            background-color: #f9f9f9;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            transition: all 0.3s ease;
+            border-left: 4px solid #2196F3;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .stat-number {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2196F3;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            font-size: 13px;
+            color: #666;
+        }
+        
+        .priority-stats .stat-card.priority-low {
+            border-color: #4CAF50;
+        }
+        
+        .priority-stats .stat-card.priority-low .stat-number {
+            color: #4CAF50;
+        }
+        
+        .priority-stats .stat-card.priority-medium {
+            border-color: #2196F3;
+        }
+        
+        .priority-stats .stat-card.priority-medium .stat-number {
+            color: #2196F3;
+        }
+        
+        .priority-stats .stat-card.priority-high {
+            border-color: #FF9800;
+        }
+        
+        .priority-stats .stat-card.priority-high .stat-number {
+            color: #FF9800;
+        }
+        
+        .priority-stats .stat-card.priority-urgent {
+            border-color: #F44336;
+        }
+        
+        .priority-stats .stat-card.priority-urgent .stat-number {
+            color: #F44336;
+        }
+        
+        .completion-chart {
+            height: 200px;
+            background-color: #f9f9f9;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 20px;
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+        }
+        
+        .chart-bar {
+            flex: 1;
+            margin: 0 5px;
+            background-color: #bbdefb;
+            border-radius: 4px 4px 0 0;
+            min-height: 4px;
+            transition: height 0.5s ease;
+            position: relative;
+            max-width: 40px;
+        }
+        
+        .chart-bar::after {
+            content: attr(data-label);
+            position: absolute;
+            bottom: -25px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 12px;
+            color: #666;
+            white-space: nowrap;
+        }
+        
+        .chart-bar::before {
+            content: attr(data-value);
+            position: absolute;
+            top: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 12px;
+            color: #2196F3;
+            font-weight: bold;
+        }
+        
+        /* 响应式设计调整 */
+        @media (max-width: 600px) {
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .completion-chart {
+                height: 150px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -1567,6 +1712,55 @@
                 <span id="total-tasks">总任务: 0</span>
                 <span id="completed-tasks">已完成: 0</span>
                 <button id="export-button" class="export-button">导出为Markdown</button>
+            </div>
+            
+            <!-- 统计面板 - v1.04新增 -->
+            <div id="stats-panel" class="stats-panel">
+                <h3><i class="material-icons">insights</i> 任务统计</h3>
+                
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div id="stats-total-tasks" class="stat-number">0</div>
+                        <div class="stat-label">总任务数</div>
+                    </div>
+                    <div class="stat-card">
+                        <div id="stats-pending-tasks" class="stat-number">0</div>
+                        <div class="stat-label">待完成任务</div>
+                    </div>
+                    <div class="stat-card">
+                        <div id="stats-completed-tasks" class="stat-number">0</div>
+                        <div class="stat-label">已完成任务</div>
+                    </div>
+                    <div class="stat-card">
+                        <div id="stats-completion-rate" class="stat-number">0%</div>
+                        <div class="stat-label">完成率</div>
+                    </div>
+                </div>
+                
+                <h3><i class="material-icons">flag</i> 优先级分布</h3>
+                <div class="stats-grid priority-stats">
+                    <div class="stat-card priority-low">
+                        <div id="stats-low-priority-count" class="stat-number">0</div>
+                        <div class="stat-label">低优先级</div>
+                    </div>
+                    <div class="stat-card priority-medium">
+                        <div id="stats-medium-priority-count" class="stat-number">0</div>
+                        <div class="stat-label">中优先级</div>
+                    </div>
+                    <div class="stat-card priority-high">
+                        <div id="stats-high-priority-count" class="stat-number">0</div>
+                        <div class="stat-label">高优先级</div>
+                    </div>
+                    <div class="stat-card priority-urgent">
+                        <div id="stats-urgent-priority-count" class="stat-number">0</div>
+                        <div class="stat-label">紧急优先级</div>
+                    </div>
+                </div>
+                
+                <h3><i class="material-icons">date_range</i> 最近一周完成情况</h3>
+                <div id="completion-chart" class="completion-chart">
+                    <!-- 动态生成图表条 -->
+                </div>
             </div>
             <style>
                 .export-button {
@@ -2094,24 +2288,20 @@
                         const checkboxChangeHandler = function() {
                             task.completed = this.checked;
                             const taskTextElem = this.parentNode.querySelector('.task-text');
+                            
+                            // 添加completedAt时间戳
                             if (this.checked) {
                                 taskTextElem.classList.add('completed');
-                                task.completedAt = new Date().toISOString(); // 添加完成时间
-                                saveTasks().then(() => {
-                                    renderTasks(); // 从当前任务中移除
-                                    updateStats();
-                                }).catch(error => {
-                                    console.error('保存任务状态失败:', error);
-                                });
+                                task.completedAt = new Date().toISOString();
                             } else {
                                 taskTextElem.classList.remove('completed');
-                                task.completedAt = null; // 清除完成时间
-                                saveTasks().then(() => {
-                                    updateStats();
-                                }).catch(error => {
-                                    console.error('保存任务状态失败:', error);
-                                });
+                                task.completedAt = null;
                             }
+                            
+                            saveTasks().then(() => {
+                                // 无需再次渲染，因为我们已经通过 DOM 操作更新了 UI
+                                updateStats();
+                            });
                         };
                         
                         checkbox.addEventListener('change', checkboxChangeHandler);
@@ -2736,10 +2926,106 @@
                 
                 // 更新统计信息
                 function updateStats() {
+                    const totalTasks = document.getElementById('total-tasks');
+                    const completedTasks = document.getElementById('completed-tasks');
+                    
                     totalTasks.textContent = `总任务: ${tasks.length}`;
                     const completedCount = tasks.filter(task => task.completed).length;
                     completedTasks.textContent = `已完成: ${completedCount}`;
+                    
+                    // 更新详细统计 - v1.04新增
+                    updateTaskStatistics();
                 }
+                
+                // 更新任务统计信息 - v1.04新增
+                function updateTaskStatistics() {
+                    // 基本计数统计
+                    const totalTasks = tasks.length;
+                    const completedTasks = tasks.filter(task => task.completed).length;
+                    const pendingTasks = totalTasks - completedTasks;
+                    const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+                    
+                    // 更新基本统计
+                    document.getElementById('stats-total-tasks').textContent = totalTasks;
+                    document.getElementById('stats-pending-tasks').textContent = pendingTasks;
+                    document.getElementById('stats-completed-tasks').textContent = completedTasks;
+                    document.getElementById('stats-completion-rate').textContent = `${completionRate}%`;
+                    
+                    // 优先级分布统计
+                    const priorityCounts = {
+                        low: tasks.filter(task => task.priority === 'low').length,
+                        medium: tasks.filter(task => task.priority === 'medium').length,
+                        high: tasks.filter(task => task.priority === 'high').length,
+                        urgent: tasks.filter(task => task.priority === 'urgent').length
+                    };
+                    
+                    // 更新优先级统计
+                    document.getElementById('stats-low-priority-count').textContent = priorityCounts.low;
+                    document.getElementById('stats-medium-priority-count').textContent = priorityCounts.medium;
+                    document.getElementById('stats-high-priority-count').textContent = priorityCounts.high;
+                    document.getElementById('stats-urgent-priority-count').textContent = priorityCounts.urgent;
+                    
+                    // 最近一周完成情况
+                    updateCompletionChart();
+                }
+                
+                // 更新完成情况图表 - v1.04新增
+                function updateCompletionChart() {
+                    const chartContainer = document.getElementById('completion-chart');
+                    chartContainer.innerHTML = '';
+                    
+                    // 获取过去7天的日期
+                    const dates = [];
+                    for (let i = 6; i >= 0; i--) {
+                        const date = new Date();
+                        date.setDate(date.getDate() - i);
+                        date.setHours(0, 0, 0, 0);
+                        dates.push(date);
+                    }
+                    
+                    // 计算每天完成的任务数量
+                    const completedByDay = dates.map(date => {
+                        const nextDay = new Date(date);
+                        nextDay.setDate(nextDay.getDate() + 1);
+                        
+                        return tasks.filter(task => {
+                            if (!task.completedAt) return false;
+                            const completedDate = new Date(task.completedAt);
+                            return completedDate >= date && completedDate < nextDay;
+                        }).length;
+                    });
+                    
+                    // 找出最大值，用于计算比例
+                    const maxCompleted = Math.max(...completedByDay, 1);
+                    
+                    // 生成柱状图
+                    dates.forEach((date, index) => {
+                        const dayNames = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+                        const dayName = dayNames[date.getDay()];
+                        const dayNumber = date.getDate();
+                        const label = `${dayName}(${dayNumber}日)`;
+                        const value = completedByDay[index];
+                        const heightPercentage = (value / maxCompleted) * 100;
+                        
+                        const bar = document.createElement('div');
+                        bar.className = 'chart-bar';
+                        bar.style.height = `${heightPercentage}%`;
+                        bar.dataset.label = label;
+                        bar.dataset.value = value;
+                        
+                        chartContainer.appendChild(bar);
+                    });
+                }
+                
+                // 初始化页面并加载任务
+                window.onload = function() {
+                    loadTasks();
+                    renderTasks();
+                    updateTagFilter();
+                    updateStats();
+                    setupRealtimeSync();
+                    setupFileOperations();
+                };
                 
                 // 更新优先级颜色
                 function updatePriorityColors() {
