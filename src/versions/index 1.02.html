@@ -1,3 +1,312 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>待办事项管理工具 v1.02</title>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <!-- 内嵌CSS -->
+    <style>
+/* 待办事项管理工具样式 */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Microsoft YaHei', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+body {
+    background-color: #f8f9fa;
+    display: flex;
+    justify-content: center;
+    padding: 40px 20px;
+    min-height: 100vh;
+}
+
+.container {
+    width: 100%;            
+    max-width: 700px;
+    background-color: white;
+    border-radius: 16px;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+    padding: 32px;
+}
+
+h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    color: #333;
+}
+
+.input-container {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 28px;
+    flex-wrap: wrap;
+}
+
+#task-input {
+    flex: 1;
+    padding: 12px 16px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 16px;
+    outline: none;
+    transition: border-color 0.3s;
+}
+
+#task-input:focus {
+    border-color: #4a90e2;
+}
+
+button {
+    background-color: #4a90e2;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 12px 24px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    /* 添加触摸延迟，降低敏感度 */
+    touch-action: manipulation;
+}
+
+button:hover {
+    background-color: #3a7bc8;
+}
+
+.task-list {
+    list-style-type: none;
+}
+
+.task-item {
+    display: flex;
+    align-items: center;
+    padding: 16px;
+    border-bottom: 1px solid #eee;
+    animation: fadeIn 0.3s ease;
+}
+
+.task-item:last-child {
+    border-bottom: none;
+}
+
+.task-checkbox {
+    margin-right: 16px;
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    /* 增加触摸区域 */
+    min-width: 24px;
+    min-height: 24px;
+}
+
+.task-text {
+    flex: 1;
+    font-size: 16px;
+    color: #333;
+    transition: color 0.3s, text-decoration 0.3s;
+}
+
+.completed .task-text {
+    color: #888;
+    text-decoration: line-through;
+}
+
+.delete-btn {
+    background-color: transparent;
+    color: #ff6b6b;
+    padding: 8px;
+    margin-left: 8px;
+    font-size: 14px;
+    opacity: 0.7;
+}
+
+.delete-btn:hover {
+    background-color: transparent;
+    opacity: 1;
+}
+
+.task-actions {
+    display: flex;
+    align-items: center;
+    /* 增加按钮间距，防止误触 */
+    gap: 10px;
+}
+
+.edit-btn {
+    background-color: transparent;
+    color: #4a90e2;
+    padding: 8px;
+    margin-left: 8px;
+    font-size: 14px;
+    opacity: 0.7;
+}
+
+.edit-btn:hover {
+    background-color: transparent;
+    opacity: 1;
+}
+
+.filter-container {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 20px;
+    /* 增加过滤按钮间距 */
+    gap: 15px;
+}
+
+.filter-btn {
+    background-color: transparent;
+    color: #666;
+    border: 1px solid #ddd;
+    padding: 8px 16px;
+    font-size: 14px;
+}
+
+.filter-btn.active {
+    background-color: #4a90e2;
+    color: white;
+    border-color: #4a90e2;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 40px 0;
+    color: #888;
+}
+
+.empty-state p {
+    margin-bottom: 20px;
+}
+
+/* 新增：任务分类样式 */
+.category-tag {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    margin-left: 10px;
+    color: white;
+}
+
+.category-work {
+    background-color: #4a90e2;
+}
+
+.category-personal {
+    background-color: #50b83c;
+}
+
+.category-shopping {
+    background-color: #f49342;
+}
+
+.category-other {
+    background-color: #9c6ade;
+}
+
+/* 新增：任务完成动画 */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes taskComplete {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+.task-complete-animation {
+    animation: taskComplete 0.3s ease;
+}
+
+/* 响应式设计 */
+@media (max-width: 600px) {
+    .container {
+        padding: 20px;
+    }
+    
+    .input-container {
+        flex-direction: column;
+    }
+    
+    #task-input, button {
+        width: 100%;
+    }
+    
+    /* 手机端按钮样式优化 */
+    button {
+        /* 增加按钮高度，提供更大的触摸区域 */
+        min-height: 48px;
+        /* 添加触摸延迟，降低敏感度 */
+        touch-action: manipulation;
+    }
+    
+    .task-actions {
+        /* 增加按钮间距，防止误触 */
+        gap: 16px;
+    }
+    
+    .edit-btn, .delete-btn {
+        /* 增加按钮触摸区域 */
+        padding: 10px 12px;
+        /* 移除左边距，使用gap控制间距 */
+        margin-left: 0;
+    }
+    
+    /* 增加复选框大小，便于触摸 */
+    .task-checkbox {
+        width: 24px;
+        height: 24px;
+        min-width: 30px;
+        min-height: 30px;
+    }
+    
+    /* 增加过滤按钮的触摸区域 */
+    .filter-btn {
+        padding: 10px 16px;
+    }
+}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>待办事项管理工具</h1>
+        
+        <!-- 过滤器 -->
+        <div class="filter-container">
+            <button class="filter-btn active" data-filter="all">全部</button>
+            <button class="filter-btn" data-filter="active">待完成</button>
+            <button class="filter-btn" data-filter="completed">已完成</button>
+        </div>
+        
+        <!-- 输入区域 -->
+        <div class="input-container">
+            <input type="text" id="task-input" placeholder="添加新任务...">
+            
+            <!-- 新增：任务分类选择 -->
+            <select id="category-select">
+                <option value="work">工作</option>
+                <option value="personal">个人</option>
+                <option value="shopping">购物</option>
+                <option value="other">其他</option>
+            </select>
+            
+            <button id="add-button">添加</button>
+        </div>
+        
+        <!-- 任务列表 -->
+        <ul id="task-list"></ul>
+    </div>
+    
+    <!-- 内嵌JavaScript -->
+    <script>
 // Firebase 配置
 const firebaseConfig = {
     apiKey: "AIzaSyDQoFW6eYP0Xq6Tv2Mf6Z3qYbCjFoVRSGY",
@@ -145,46 +454,54 @@ function syncTasksToFirebase(tasks) {
     tasksRef.set(tasks);
 }
 
-// 添加新任务
+// 添加任务
 function addTask() {
-    const taskText = taskInput.value.trim();
+    const text = taskInput.value.trim();
     const category = categorySelect.value;
     
-    if (taskText) {
-        const newTaskRef = tasksRef.push();
-        const taskId = newTaskRef.key;
-        
+    if (text) {
+        // 创建新任务对象
         const newTask = {
-            id: taskId,
-            text: taskText,
+            id: Date.now().toString(),
+            text: text,
             completed: false,
             category: category,
-            createdAt: firebase.database.ServerValue.TIMESTAMP
+            createdAt: Date.now()
         };
         
-        newTaskRef.set(newTask)
+        // 添加到Firebase
+        tasksRef.child(newTask.id).set(newTask)
             .then(() => {
                 console.log('任务添加成功');
+                
+                // 清空输入框
                 taskInput.value = '';
                 taskInput.focus();
             })
             .catch(error => {
                 console.error('添加任务失败:', error);
+                
                 // 如果Firebase添加失败，保存到本地
                 const tasks = getTasksFromLocalStorage();
-                tasks[taskId] = {...newTask, createdAt: Date.now()};
+                tasks[newTask.id] = newTask;
                 saveTasksToLocalStorage(tasks);
                 renderTasks(tasks);
+                
+                // 清空输入框
+                taskInput.value = '';
+                taskInput.focus();
             });
     }
 }
 
 // 删除任务
 function deleteTask(taskId) {
+    // 从Firebase删除
     tasksRef.child(taskId).remove()
         .catch(error => {
             console.error('删除任务失败:', error);
-            // 如果Firebase删除失败，从本地存储删除
+            
+            // 如果Firebase删除失败，从本地删除
             const tasks = getTasksFromLocalStorage();
             delete tasks[taskId];
             saveTasksToLocalStorage(tasks);
@@ -193,30 +510,32 @@ function deleteTask(taskId) {
 }
 
 // 切换任务完成状态
-function toggleTaskComplete(taskId, completed) {
-    const taskRef = tasksRef.child(taskId);
+function toggleTaskComplete(taskId, currentStatus) {
+    // 获取任务元素
+    const taskElement = document.querySelector(`.task-item[data-id="${taskId}"]`);
     
-    taskRef.update({ completed: !completed })
-        .then(() => {
-            // 添加完成动画
-            if (!completed) {
-                const taskElement = document.querySelector(`[data-id="${taskId}"]`);
-                taskElement.classList.add('task-complete-animation');
-                setTimeout(() => {
-                    taskElement.classList.remove('task-complete-animation');
-                }, 300);
-            }
-        })
-        .catch(error => {
-            console.error('更新任务状态失败:', error);
-            // 如果Firebase更新失败，更新本地存储
-            const tasks = getTasksFromLocalStorage();
-            if (tasks[taskId]) {
-                tasks[taskId].completed = !completed;
-                saveTasksToLocalStorage(tasks);
-                renderTasks(tasks);
-            }
-        });
+    // 添加动画
+    taskElement.classList.add('task-complete-animation');
+    
+    // 动画结束后移除类
+    setTimeout(() => {
+        taskElement.classList.remove('task-complete-animation');
+    }, 300);
+    
+    // 更新Firebase中的状态
+    tasksRef.child(taskId).update({
+        completed: !currentStatus
+    }).catch(error => {
+        console.error('更新任务状态失败:', error);
+        
+        // 如果Firebase更新失败，更新本地存储
+        const tasks = getTasksFromLocalStorage();
+        if (tasks[taskId]) {
+            tasks[taskId].completed = !currentStatus;
+            saveTasksToLocalStorage(tasks);
+            renderTasks(tasks);
+        }
+    });
 }
 
 // 编辑任务
@@ -224,25 +543,27 @@ function editTask(taskId, currentText) {
     const newText = prompt('编辑任务', currentText);
     
     if (newText !== null && newText.trim() !== '') {
-        tasksRef.child(taskId).update({ text: newText.trim() })
-            .catch(error => {
-                console.error('编辑任务失败:', error);
-                // 如果Firebase更新失败，更新本地存储
-                const tasks = getTasksFromLocalStorage();
-                if (tasks[taskId]) {
-                    tasks[taskId].text = newText.trim();
-                    saveTasksToLocalStorage(tasks);
-                    renderTasks(tasks);
-                }
-            });
+        // 更新Firebase中的文本
+        tasksRef.child(taskId).update({
+            text: newText.trim()
+        }).catch(error => {
+            console.error('编辑任务失败:', error);
+            
+            // 如果Firebase更新失败，更新本地存储
+            const tasks = getTasksFromLocalStorage();
+            if (tasks[taskId]) {
+                tasks[taskId].text = newText.trim();
+                saveTasksToLocalStorage(tasks);
+                renderTasks(tasks);
+            }
+        });
     }
 }
 
 // 设置过滤器
 function setFilter(filter) {
     currentFilter = filter;
-    const tasks = getTasksFromLocalStorage();
-    renderTasks(tasks);
+    renderTasks(getTasksFromLocalStorage());
 }
 
 // 渲染任务列表
@@ -377,23 +698,48 @@ function getCategoryText(category) {
 // 添加示例任务
 function addSampleTasks() {
     const sampleTasks = [
-        { text: '完成项目报告', category: 'work' },
-        { text: '购买生日礼物', category: 'shopping' },
-        { text: '锻炼30分钟', category: 'personal' }
+        {
+            id: Date.now().toString(),
+            text: '完成工作报告',
+            completed: false,
+            category: 'work',
+            createdAt: Date.now()
+        },
+        {
+            id: (Date.now() + 1).toString(),
+            text: '购买生日礼物',
+            completed: false,
+            category: 'shopping',
+            createdAt: Date.now() - 1000
+        },
+        {
+            id: (Date.now() + 2).toString(),
+            text: '健身锻炼',
+            completed: false,
+            category: 'personal',
+            createdAt: Date.now() - 2000
+        }
     ];
     
+    // 批量添加到Firebase
+    const updates = {};
     sampleTasks.forEach(task => {
-        const newTaskRef = tasksRef.push();
-        const taskId = newTaskRef.key;
-        
-        newTaskRef.set({
-            id: taskId,
-            text: task.text,
-            completed: false,
-            category: task.category,
-            createdAt: firebase.database.ServerValue.TIMESTAMP
-        }).catch(error => {
-            console.error('添加示例任务失败:', error);
-        });
+        updates[task.id] = task;
     });
-} 
+    
+    tasksRef.update(updates)
+        .catch(error => {
+            console.error('添加示例任务失败:', error);
+            
+            // 如果Firebase添加失败，保存到本地
+            const tasks = getTasksFromLocalStorage();
+            sampleTasks.forEach(task => {
+                tasks[task.id] = task;
+            });
+            saveTasksToLocalStorage(tasks);
+            renderTasks(tasks);
+        });
+}
+    </script>
+</body>
+</html> 
