@@ -1,0 +1,222 @@
+/* 待办事项管理工具样式 */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Microsoft YaHei', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+body {
+    background-color: #f8f9fa;
+    display: flex;
+    justify-content: center;
+    padding: 40px 20px;
+    min-height: 100vh;
+}
+
+.container {
+    width: 100%;            
+    max-width: 700px;
+    background-color: white;
+    border-radius: 16px;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+    padding: 32px;
+}
+
+h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    color: #333;
+}
+
+.input-container {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 28px;
+    flex-wrap: wrap;
+}
+
+#task-input {
+    flex: 1;
+    padding: 12px 16px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 16px;
+    outline: none;
+    transition: border-color 0.3s;
+}
+
+#task-input:focus {
+    border-color: #4a90e2;
+}
+
+button {
+    background-color: #4a90e2;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 12px 24px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+button:hover {
+    background-color: #3a7bc8;
+}
+
+.task-list {
+    list-style-type: none;
+}
+
+.task-item {
+    display: flex;
+    align-items: center;
+    padding: 16px;
+    border-bottom: 1px solid #eee;
+    animation: fadeIn 0.3s ease;
+}
+
+.task-item:last-child {
+    border-bottom: none;
+}
+
+.task-checkbox {
+    margin-right: 16px;
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+}
+
+.task-text {
+    flex: 1;
+    font-size: 16px;
+    color: #333;
+    transition: color 0.3s, text-decoration 0.3s;
+}
+
+.completed .task-text {
+    color: #888;
+    text-decoration: line-through;
+}
+
+.delete-btn {
+    background-color: transparent;
+    color: #ff6b6b;
+    padding: 8px;
+    margin-left: 8px;
+    font-size: 14px;
+    opacity: 0.7;
+}
+
+.delete-btn:hover {
+    background-color: transparent;
+    opacity: 1;
+}
+
+.task-actions {
+    display: flex;
+    align-items: center;
+}
+
+.edit-btn {
+    background-color: transparent;
+    color: #4a90e2;
+    padding: 8px;
+    margin-left: 8px;
+    font-size: 14px;
+    opacity: 0.7;
+}
+
+.edit-btn:hover {
+    background-color: transparent;
+    opacity: 1;
+}
+
+.filter-container {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 20px;
+    gap: 10px;
+}
+
+.filter-btn {
+    background-color: transparent;
+    color: #666;
+    border: 1px solid #ddd;
+    padding: 8px 16px;
+    font-size: 14px;
+}
+
+.filter-btn.active {
+    background-color: #4a90e2;
+    color: white;
+    border-color: #4a90e2;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 40px 0;
+    color: #888;
+}
+
+.empty-state p {
+    margin-bottom: 20px;
+}
+
+/* 新增：任务分类样式 */
+.category-tag {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    margin-left: 10px;
+    color: white;
+}
+
+.category-work {
+    background-color: #4a90e2;
+}
+
+.category-personal {
+    background-color: #50b83c;
+}
+
+.category-shopping {
+    background-color: #f49342;
+}
+
+.category-other {
+    background-color: #9c6ade;
+}
+
+/* 新增：任务完成动画 */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes taskComplete {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+.task-complete-animation {
+    animation: taskComplete 0.3s ease;
+}
+
+/* 响应式设计 */
+@media (max-width: 600px) {
+    .container {
+        padding: 20px;
+    }
+    
+    .input-container {
+        flex-direction: column;
+    }
+    
+    #task-input, button {
+        width: 100%;
+    }
+} 
