@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>待办事项管理工具 v1.04</title>
+    <title>待办事项管理工具 v1.05</title>
     <!-- Material Icons -->
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <!-- Firebase SDK -->
@@ -126,6 +126,78 @@
         .task-list .task-item.drag-over {
             border: 2px dashed #4CAF50;
             background-color: rgba(76, 175, 80, 0.05);
+        }
+        
+        /* v1.05新增：拖拽增强样式 */
+        .task-list .task-item {
+            transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease, border 0.2s ease;
+            position: relative;
+        }
+        
+        .task-list .task-item.dragging {
+            opacity: 0.7;
+            background-color: #f0f8ff;
+            transform: scale(1.03) translateY(-2px);
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+            border: 1px solid #bbdefb;
+            z-index: 100;
+            cursor: grabbing;
+        }
+        
+        .task-list .task-item.drag-over {
+            border: 2px dashed #2196F3;
+            background-color: rgba(33, 150, 243, 0.05);
+            transform: scale(1.01);
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.05);
+        }
+        
+        .task-list .task-item.drag-hint::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: -4px;
+            height: 4px;
+            background-color: #2196F3;
+            border-radius: 2px;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+        
+        .task-list .task-item.drag-hint-below::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: -4px;
+            height: 4px;
+            background-color: #2196F3;
+            border-radius: 2px;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+        
+        .task-list .task-item.drag-hint::before,
+        .task-list .task-item.drag-hint-below::after {
+            opacity: 1;
+        }
+        
+        .task-item .drag-handle {
+            cursor: grab;
+            padding: 4px;
+            margin-right: 8px;
+            color: #aaa;
+            transition: color 0.2s ease;
+            display: flex;
+            align-items: center;
+        }
+        
+        .task-item .drag-handle:hover {
+            color: #666;
+        }
+        
+        .task-item .drag-handle i {
+            font-size: 20px;
         }
         
         .task-item {
@@ -2052,6 +2124,12 @@
                                 if (data) {
                                     tasks = Object.values(data);
                                     console.log('成功从 Firebase 加载任务，数量:', tasks.length);
+                                    
+                                    // v1.05: 确保任务属性完整
+                                    ensureTaskProperties();
+                                    
+                                    // v1.05: 恢复排序状态
+                                    restoreTaskOrder();
                                 } else {
                                     console.log('Firebase 中没有任务数据，尝试从本地存储加载');
                                     try {
@@ -2060,43 +2138,31 @@
                                             tasks = JSON.parse(localTasks);
                                             console.log('从本地存储加载任务成功，数量:', tasks.length);
                                             
-                                            // 将本地数据迁移到 Firebase
-                                            console.log('将本地任务迁移到 Firebase...');
-                                            saveTasks().then(() => {
-                                                console.log('本地任务成功迁移到 Firebase');
-                                            });
+                                            // v1.05: 确保任务属性完整
+                                            ensureTaskProperties();
+                                            
+                                            // v1.05: 恢复排序状态
+                                            restoreTaskOrder();
+                                            
+                                            // v1.05: 恢复排序状态
+                                            restoreTaskOrder();
+                                            
+                                            resolve(true);
                                         } else {
                                             console.log('本地存储中没有任务数据');
                                             tasks = [];
+                                            resolve(false);
                                         }
                                     } catch (e) {
-                                        console.error('从本地存储加载失败:', e);
+                                        console.error('从本地存储加载也失败:', e);
                                         tasks = [];
+                                        resolve(false);
                                     }
                                 }
-                                
-                                // 为没有创建时间的任务添加创建时间
-                                let needsUpdate = false;
-                                tasks.forEach(task => {
-                                    if (!task.createdAt) {
-                                        task.createdAt = new Date().toISOString();
-                                        needsUpdate = true;
-                                    }
-                                    // 确保每个任务有唯一ID
-                                    if (!task.id) {
-                                        task.id = Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-                                        needsUpdate = true;
-                                    }
-                                });
-                                
-                                if (needsUpdate) {
-                                    saveTasks();
-                                }
-                                
                                 resolve(true);
                             })
                             .catch(error => {
-                                console.error('从 Firebase 加载失败:', error);
+                                console.error('从 Firebase 加载任务失败:', error);
                                 
                                 // 尝试从本地存储加载
                                 try {
@@ -2104,6 +2170,10 @@
                                     if (localTasks) {
                                         tasks = JSON.parse(localTasks);
                                         console.log('从本地存储加载任务成功，数量:', tasks.length);
+                                        
+                                        // v1.05: 恢复排序状态
+                                        restoreTaskOrder();
+                                        
                                         resolve(true);
                                     } else {
                                         console.log('本地存储中没有任务数据');
@@ -2117,6 +2187,80 @@
                                 }
                             });
                     });
+                }
+                
+                // v1.05: 确保任务具有所有必要的属性
+                function ensureTaskProperties() {
+                    let needsUpdate = false;
+                    tasks.forEach(task => {
+                        if (!task.createdAt) {
+                            task.createdAt = new Date().toISOString();
+                            needsUpdate = true;
+                        }
+                        // 确保每个任务有唯一ID
+                        if (!task.id) {
+                            task.id = Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                            needsUpdate = true;
+                        }
+                    });
+                    
+                    if (needsUpdate) {
+                        console.log('为任务添加了缺失的属性，将保存更新');
+                        saveTasks();
+                    }
+                }
+                
+                // v1.05: 新增恢复任务排序的函数
+                function restoreTaskOrder() {
+                    try {
+                        // 获取保存的排序
+                        const savedOrder = localStorage.getItem('taskOrder');
+                        if (!savedOrder) {
+                            console.log('没有找到保存的排序信息');
+                            return;
+                        }
+                        
+                        const orderIds = JSON.parse(savedOrder);
+                        if (!Array.isArray(orderIds) || orderIds.length === 0) {
+                            console.log('排序信息为空或格式错误');
+                            return;
+                        }
+                        
+                        console.log('找到保存的排序信息，任务ID数:', orderIds.length);
+                        
+                        // 区分已完成和未完成任务
+                        const incompleteTasks = tasks.filter(task => !task.completed);
+                        const completedTasks = tasks.filter(task => task.completed);
+                        
+                        // 创建一个新的任务数组，按照保存的顺序排列
+                        const orderedTasks = [];
+                        
+                        // 先按保存的顺序添加未完成的任务
+                        orderIds.forEach(id => {
+                            const task = incompleteTasks.find(t => t.id === id);
+                            if (task) {
+                                orderedTasks.push(task);
+                            }
+                        });
+                        
+                        // 添加其他未排序的未完成任务
+                        incompleteTasks.forEach(task => {
+                            if (!orderedTasks.includes(task)) {
+                                orderedTasks.push(task);
+                            }
+                        });
+                        
+                        // 最后添加已完成的任务
+                        completedTasks.forEach(task => {
+                            orderedTasks.push(task);
+                        });
+                        
+                        // 更新任务数组
+                        tasks = orderedTasks;
+                        console.log('成功恢复任务排序，总任务数:', tasks.length);
+                    } catch (e) {
+                        console.error('恢复任务排序失败:', e);
+                    }
                 }
                 
                 // 保存任务
@@ -2248,7 +2392,13 @@
                         taskItem.className = 'task-item';
                         taskItem.draggable = true;
                         taskItem.setAttribute('data-index', tasks.indexOf(task));
-                        taskItem.dataset.id = task.id; // 添加ID属性
+                        
+                        // v1.05新增：添加拖拽手柄
+                        const dragHandle = document.createElement('div');
+                        dragHandle.className = 'drag-handle';
+                        dragHandle.innerHTML = '<i class="material-icons">drag_indicator</i>';
+                        dragHandle.title = '拖拽排序';
+                        taskItem.appendChild(dragHandle);
                         
                         // 优先级指示器
                         const priorityIndicator = document.createElement('div');
@@ -2473,84 +2623,216 @@
                 function setupDragAndDrop() {
                     const taskItems = document.querySelectorAll('.task-item');
                     
-                    // 检测是否是移动设备
-                    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-                    
-                    // 如果是移动设备，不启用拖放功能
-                    if (isMobile) {
-                        console.log('在移动设备上禁用拖放功能');
-                        return;
-                    }
+                    // v1.05: 不再禁用移动设备上的拖拽功能，而是增强触摸支持
                     
                     let draggedItem = null;
+                    let hintTimeout = null;
+                    let lastY = 0;
+                    
+                    // 添加拖拽手柄事件，只有点击拖拽手柄才能开始拖拽
+                    taskItems.forEach(item => {
+                        const dragHandle = item.querySelector('.drag-handle');
+                        const taskIndex = parseInt(item.getAttribute('data-index'));
+                        
+                        if (!dragHandle) return;
+                        
+                        // 使任务项只有在拖拽手柄上按下时才能拖拽
+                        item.draggable = false;
+                        
+                        // 点击拖拽手柄时启用拖拽
+                        dragHandle.addEventListener('mousedown', function(e) {
+                            item.draggable = true;
+                            // 记住当前鼠标位置
+                            lastY = e.clientY;
+                        });
+                        
+                        // 鼠标松开或离开任务项时禁用拖拽
+                        item.addEventListener('mouseup', function() {
+                            setTimeout(() => {
+                                item.draggable = false;
+                            }, 100);
+                        });
+                        
+                        item.addEventListener('mouseleave', function() {
+                            setTimeout(() => {
+                                item.draggable = false;
+                            }, 100);
+                        });
+                        
+                        // 触摸开始时启用拖拽（移动设备支持）
+                        dragHandle.addEventListener('touchstart', function(e) {
+                            item.draggable = true;
+                            // 记住触摸起始位置
+                            if (e.touches && e.touches.length > 0) {
+                                lastY = e.touches[0].clientY;
+                            }
+                            e.stopPropagation();
+                        }, { passive: true });
+                        
+                        // 触摸结束时禁用拖拽
+                        item.addEventListener('touchend', function() {
+                            setTimeout(() => {
+                                item.draggable = false;
+                            }, 100);
+                        });
+                    });
                     
                     taskItems.forEach(item => {
                         // 拖拽开始
-                        item.addEventListener('dragstart', function() {
+                        item.addEventListener('dragstart', function(e) {
                             draggedItem = this;
-                            setTimeout(() => {
+                            
+                            // 设置拖拽效果和图像
+                            if (e.dataTransfer) {
+                                e.dataTransfer.effectAllowed = 'move';
+                                // 创建一个半透明的克隆作为拖拽图像
                                 this.classList.add('dragging');
-                            }, 0);
+                                
+                                // 延迟添加拖拽样式，以便在拖拽开始前不会闪烁
+                                setTimeout(() => {
+                                    this.classList.add('dragging');
+                                }, 0);
+                                
+                                // 记录任务索引用于数据传输
+                                const taskIndex = this.getAttribute('data-index');
+                                e.dataTransfer.setData('text/plain', taskIndex);
+                            }
                         });
                         
                         // 拖拽结束
                         item.addEventListener('dragend', function() {
                             this.classList.remove('dragging');
                             draggedItem = null;
+                            
+                            // 移除所有提示效果
+                            document.querySelectorAll('.drag-hint, .drag-hint-below, .drag-over').forEach(el => {
+                                el.classList.remove('drag-hint', 'drag-hint-below', 'drag-over');
+                            });
+                            
+                            // 重设拖拽属性
+                            this.draggable = false;
                         });
                         
-                        // 拖拽经过
+                        // 拖拽经过其他元素时
                         item.addEventListener('dragover', function(e) {
                             e.preventDefault();
-                            if (draggedItem !== this) {
+                            e.stopPropagation();
+                            
+                            if (draggedItem && draggedItem !== this) {
+                                // 获取鼠标在元素中的相对位置
+                                const rect = this.getBoundingClientRect();
+                                const mouseY = e.clientY;
+                                const threshold = rect.height / 2;
+                                const mousePosition = mouseY - rect.top;
+                                
+                                // 清除之前的所有提示
+                                this.classList.remove('drag-hint', 'drag-hint-below');
+                                
+                                // 根据鼠标位置确定插入位置
+                                if (mousePosition < threshold) {
+                                    // 鼠标在上半部分，显示上方插入提示
+                                    this.classList.add('drag-hint');
+                                    this.classList.remove('drag-hint-below');
+                                } else {
+                                    // 鼠标在下半部分，显示下方插入提示
+                                    this.classList.add('drag-hint-below');
+                                    this.classList.remove('drag-hint');
+                                }
+                                
                                 this.classList.add('drag-over');
                             }
+                            
+                            // 允许放置
+                            return false;
                         });
                         
                         // 拖拽离开
                         item.addEventListener('dragleave', function() {
-                            this.classList.remove('drag-over');
+                            this.classList.remove('drag-over', 'drag-hint', 'drag-hint-below');
                         });
                         
                         // 放置
                         item.addEventListener('drop', function(e) {
                             e.preventDefault();
-                            this.classList.remove('drag-over');
+                            e.stopPropagation();
                             
-                            if (draggedItem !== this) {
+                            // 移除提示样式
+                            this.classList.remove('drag-over', 'drag-hint', 'drag-hint-below');
+                            
+                            if (draggedItem && draggedItem !== this) {
                                 const allItems = Array.from(taskList.querySelectorAll('.task-item'));
                                 const draggedIndex = allItems.indexOf(draggedItem);
                                 const targetIndex = allItems.indexOf(this);
                                 
-                                // 重新排序DOM元素
-                                if (draggedIndex < targetIndex) {
-                                    taskList.insertBefore(draggedItem, this.nextSibling);
+                                // 获取放置时鼠标位置判断插入点
+                                const rect = this.getBoundingClientRect();
+                                const threshold = rect.height / 2;
+                                const mouseY = e.clientY;
+                                const mousePosition = mouseY - rect.top;
+                                
+                                // 根据鼠标位置决定放置在目标元素之前还是之后
+                                if (mousePosition >= threshold) {
+                                    // 放置在目标元素之后
+                                    if (draggedIndex < targetIndex) {
+                                        if (this.nextSibling) {
+                                            taskList.insertBefore(draggedItem, this.nextSibling);
+                                        } else {
+                                            taskList.appendChild(draggedItem);
+                                        }
+                                    } else {
+                                        if (this.nextSibling) {
+                                            taskList.insertBefore(draggedItem, this.nextSibling);
+                                        } else {
+                                            taskList.appendChild(draggedItem);
+                                        }
+                                    }
                                 } else {
+                                    // 放置在目标元素之前
                                     taskList.insertBefore(draggedItem, this);
                                 }
                                 
                                 // 更新任务数组顺序
-                                const taskIndexes = Array.from(taskList.querySelectorAll('.task-item')).map(item => {
-                                    return parseInt(item.getAttribute('data-index'));
-                                });
-                                
-                                // 保存新的排序
-                                const newTasks = [];
-                                taskIndexes.forEach(index => {
-                                    newTasks.push(tasks[index]);
-                                });
-                                
-                                // 更新未完成的任务顺序
-                                const incompleteTasks = tasks.filter(task => !task.completed);
-                                const completedTasks = tasks.filter(task => task.completed);
-                                
-                                // 合并回原数组
-                                tasks = [...newTasks, ...completedTasks.filter(task => !newTasks.includes(task))];
-                                
-                                // 保存到本地存储
-                                saveTasks();
+                                saveTaskOrder();
                             }
+                            
+                            return false;
                         });
+                    });
+                }
+                
+                // v1.05: 新增保存任务顺序的函数
+                function saveTaskOrder() {
+                    // 获取当前所有任务项的索引顺序
+                    const taskIndexes = Array.from(taskList.querySelectorAll('.task-item')).map(item => {
+                        return parseInt(item.getAttribute('data-index'));
+                    });
+                    
+                    // 根据索引顺序重新排列任务
+                    const orderedTasks = [];
+                    taskIndexes.forEach(index => {
+                        if (index >= 0 && index < tasks.length) {
+                            orderedTasks.push(tasks[index]);
+                        }
+                    });
+                    
+                    // 区分已完成和未完成任务
+                    const incompleteTasks = tasks.filter(task => !task.completed);
+                    const completedTasks = tasks.filter(task => task.completed);
+                    
+                    // 保存新的排序到任务数组
+                    tasks = [
+                        ...orderedTasks.filter(task => !task.completed), 
+                        ...completedTasks.filter(task => !orderedTasks.includes(task))
+                    ];
+                    
+                    // 保存排序标识符
+                    const orderIds = tasks.filter(task => !task.completed).map(task => task.id);
+                    localStorage.setItem('taskOrder', JSON.stringify(orderIds));
+                    
+                    // 保存到数据库
+                    saveTasks().then(() => {
+                        // 更新统计
+                        updateStats();
                     });
                 }
                 
@@ -3019,13 +3301,43 @@
                 
                 // 初始化页面并加载任务
                 window.onload = function() {
-                    loadTasks();
-                    renderTasks();
-                    updateTagFilter();
-                    updateStats();
-                    setupRealtimeSync();
-                    setupFileOperations();
+                    loadTasks().then(() => {
+                        renderTasks();
+                        updateTagFilter();
+                        updateStats();
+                        
+                        // v1.05: 验证保存的排序与当前任务是否匹配
+                        validateSavedOrder();
+                        
+                        setupRealtimeSync();
+                        setupFileOperations();
+                        
+                        // 应用初始化的优先级颜色
+                        updatePriorityColors();
+                    });
                 };
+                
+                // v1.05: 验证保存的排序是否与当前任务匹配
+                function validateSavedOrder() {
+                    try {
+                        const savedOrder = localStorage.getItem('taskOrder');
+                        if (!savedOrder) return;
+                        
+                        const orderIds = JSON.parse(savedOrder);
+                        if (!Array.isArray(orderIds)) return;
+                        
+                        // 检查是否所有排序ID都在当前任务中
+                        const validIds = orderIds.filter(id => tasks.some(task => task.id === id));
+                        
+                        // 如果有效ID少于保存的ID，更新排序
+                        if (validIds.length < orderIds.length) {
+                            console.log('排序信息与当前任务不匹配，更新排序');
+                            localStorage.setItem('taskOrder', JSON.stringify(validIds));
+                        }
+                    } catch (e) {
+                        console.error('验证排序时出错:', e);
+                    }
+                }
                 
                 // 更新优先级颜色
                 function updatePriorityColors() {
@@ -3227,6 +3539,13 @@
                         taskItem.className = 'task-item';
                         taskItem.draggable = true;
                         taskItem.setAttribute('data-index', tasks.indexOf(task));
+                        
+                        // v1.05新增：添加拖拽手柄
+                        const dragHandle = document.createElement('div');
+                        dragHandle.className = 'drag-handle';
+                        dragHandle.innerHTML = '<i class="material-icons">drag_indicator</i>';
+                        dragHandle.title = '拖拽排序';
+                        taskItem.appendChild(dragHandle);
                         
                         // 优先级指示器
                         const priorityIndicator = document.createElement('div');
