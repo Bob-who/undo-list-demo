@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>待办事项管理工具 内测1.0 beta版</title>
+    <title>待办事项管理工具 v1.11</title>
     <!-- Material Icons -->
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <!-- Firebase SDK -->
@@ -1833,6 +1833,317 @@
         .logout-button:hover {
             text-decoration: underline;
         }
+
+        /* 任务分割线 */
+        .task-divider {
+            height: 1px;
+            background-color: #e0e0e0;
+            margin: 10px 0;
+            width: 100%;
+        }
+        
+        /* v1.09新增：任务评分系统UI样式 */
+        .rating-container {
+            display: flex;
+            align-items: center;
+            margin-top: 8px;
+            flex-wrap: wrap;
+        }
+
+        /* 在评分系统样式之后添加新的样式 */
+        
+        /* v1.11新增: 子任务和任务关联样式 */
+        .subtasks-container {
+            margin-top: 10px;
+            margin-left: 24px;
+            border-left: 2px dashed #e0e0e0;
+            padding-left: 12px;
+        }
+        
+        .subtask-item {
+            display: flex;
+            align-items: center;
+            padding: 6px 8px;
+            margin-bottom: 5px;
+            background-color: #f5f5f5;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        
+        .subtask-checkbox {
+            margin-right: 8px;
+        }
+        
+        .subtask-text {
+            flex-grow: 1;
+        }
+        
+        .subtask-text.completed {
+            text-decoration: line-through;
+            color: #888;
+        }
+        
+        .relation-badge {
+            display: inline-block;
+            padding: 2px 6px;
+            font-size: 12px;
+            border-radius: 12px;
+            margin-right: 5px;
+            margin-bottom: 5px;
+            color: white;
+        }
+        
+        .relation-badge.dependency {
+            background-color: #E91E63;
+        }
+        
+        .relation-badge.blocker {
+            background-color: #F44336;
+        }
+        
+        .relation-badge.related {
+            background-color: #03A9F4;
+        }
+        
+        .relation-container {
+            margin-top: 8px;
+            display: flex;
+            flex-wrap: wrap;
+        }
+        
+        .task-action-icons {
+            display: flex;
+            align-items: center;
+            margin-left: 8px;
+        }
+        
+        .task-action-button {
+            background: none;
+            border: none;
+            color: #616161;
+            cursor: pointer;
+            padding: 4px;
+            margin-left: 2px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.3s;
+        }
+        
+        .task-action-button:hover {
+            background-color: rgba(0,0,0,0.08);
+        }
+        
+        .task-action-button i {
+            font-size: 18px;
+        }
+        
+        .modal-section {
+            margin-bottom: 20px;
+        }
+        
+        .modal-section-title {
+            font-weight: 500;
+            margin-bottom: 8px;
+            color: #333;
+        }
+        
+        /* 任务关系选择器 */
+        .relation-type-select {
+            margin-bottom: 10px;
+            width: 100%;
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+        
+        .relation-tasks-select {
+            width: 100%;
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            margin-bottom: 10px;
+        }
+        
+        .add-relation-btn {
+            background-color: #2196F3;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .add-relation-btn:hover {
+            background-color: #1976D2;
+        }
+        
+        /* 任务关系模态框 */
+        .task-relationship-modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.5);
+        }
+        
+        .task-relationship-content {
+            background-color: #fefefe;
+            margin: 10% auto;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            width: 80%;
+            max-width: 600px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        
+        .task-relationship-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .task-relationship-title {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 500;
+        }
+        
+        .relation-list {
+            margin-top: 10px;
+        }
+        
+        .relation-item {
+            padding: 8px;
+            background-color: #f5f5f5;
+            border-radius: 4px;
+            margin-bottom: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .remove-relation {
+            background: none;
+            border: none;
+            color: #F44336;
+            cursor: pointer;
+            font-size: 18px;
+        }
+        
+        /* 子任务添加区域 */
+        .subtask-input {
+            width: 100%;
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            margin-bottom: 10px;
+        }
+        
+        .add-subtask-btn {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .add-subtask-btn:hover {
+            background-color: #388E3C;
+        }
+
+        /* 确认模态框样式 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal.active {
+            display: flex;
+        }
+        
+        .modal-content {
+            background-color: white;
+            border-radius: 8px;
+            padding: 20px;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+        
+        .modal-header h3 {
+            margin: 0;
+            font-size: 18px;
+        }
+        
+        .modal-close {
+            cursor: pointer;
+            font-size: 22px;
+            font-weight: bold;
+            color: #777;
+            background: none;
+            border: none;
+        }
+        
+        .modal-body {
+            margin-bottom: 20px;
+        }
+        
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        
+        .modal-button {
+            padding: 8px 16px;
+            border-radius: 4px;
+            border: none;
+            cursor: pointer;
+        }
+        
+        .modal-button.cancel {
+            background-color: #e0e0e0;
+            color: #333;
+        }
+        
+        .modal-button.confirm {
+            background-color: #f44336;
+            color: white;
+        }
+        
+        .modal-button.confirm.export {
+            background-color: #4CAF50;
+        }
     </style>
 </head>
 <body>
@@ -2167,8 +2478,8 @@
                     });
                     
                 console.log('Firebase 初始化完成');
-                console.log('待办事项管理工具 内测1.0 beta版 初始化');
-                console.log('新增功能: 多用户注册和认证，数据隔离与管理');
+                console.log('待办事项管理工具 v1.11 初始化');
+                console.log('新增功能: 使用图标美化界面，添加子任务和任务关联功能');
                 
                 // 用户认证状态监听
                 let currentUser = null;
@@ -2693,7 +3004,7 @@
                     }
                 });
                 
-                exportButton.addEventListener('click', exportToMarkdown);
+                exportButton.addEventListener('click', showExportConfirmModal);
                 
                 editModalClose.addEventListener('click', closeEditModal);
                 editCancelButton.addEventListener('click', closeEditModal);
@@ -3166,69 +3477,85 @@
                         const editButton = document.createElement('button');
                         editButton.className = 'edit-button';
                         editButton.textContent = '编辑';
-                        
-                        // 添加触摸事件支持
-                        const editClickHandler = function(e) {
+                        editButton.addEventListener('click', function(e) {
                             e.stopPropagation();
-                            const taskIndex = tasks.findIndex(t => t.id === task.id);
-                            if (taskIndex !== -1) {
+                            const taskIndex = tasks.indexOf(task);
                                 openEditModal(taskIndex);
-                            } else {
-                                console.error('找不到要编辑的任务');
-                            }
-                        };
-                        
-                        editButton.addEventListener('click', editClickHandler);
-                        editButton.addEventListener('touchend', function(e) {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            editClickHandler(e);
                         });
-                        
                         buttonGroup.appendChild(editButton);
                         
                         // 删除按钮
                         const deleteButton = document.createElement('button');
                         deleteButton.className = 'delete-button';
                         deleteButton.textContent = '删除';
-                        
-                        // 添加触摸事件支持
-                        const deleteClickHandler = function(e) {
+                        deleteButton.addEventListener('click', function(e) {
                             e.stopPropagation();
-                            if (confirm('确定要删除此任务吗？')) {
-                                const taskIndex = tasks.findIndex(t => t.id === task.id);
-                                if (taskIndex !== -1) {
-                                    tasks.splice(taskIndex, 1);
-                                    saveTasks().then(() => {
-                                        updateTagFilter();
-                                        // 这里使用搜索框中的当前值来重新过滤
-                                        const searchTerm = searchInput.value.toLowerCase();
-                                        const newFilteredTasks = tasks.filter(t => 
-                                            t.text.toLowerCase().includes(searchTerm) ||
-                                            (t.tags && t.tags.some(tag => tag.toLowerCase().includes(searchTerm)))
-                                        );
-                                        renderFilteredTasks(newFilteredTasks);
-                                        updateStats();
-                                    }).catch(error => {
-                                        console.error('删除任务失败:', error);
-                                    });
-                                } else {
-                                    console.error('找不到要删除的任务');
-                                }
-                            }
-                        };
-                        
-                        deleteButton.addEventListener('click', deleteClickHandler);
-                        deleteButton.addEventListener('touchend', function(e) {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            deleteClickHandler(e);
+                            showDeleteConfirmModal(task.id);
                         });
-                        
                         buttonGroup.appendChild(deleteButton);
                         
-                        // 将按钮组添加到任务项
                         taskItem.appendChild(buttonGroup);
+                        
+                        // v1.11: 渲染子任务（如果有）
+                        if (task.subtasks && task.subtasks.length > 0) {
+                                const subtasksContainer = document.createElement('div');
+                                subtasksContainer.className = 'subtasks-container';
+                                
+                            task.subtasks.forEach(subtask => {
+                                        const subtaskItem = document.createElement('div');
+                                        subtaskItem.className = 'subtask-item';
+                                        
+                                const checkbox = document.createElement('input');
+                                checkbox.type = 'checkbox';
+                                checkbox.className = 'subtask-checkbox';
+                                checkbox.checked = subtask.completed || false;
+                                checkbox.addEventListener('change', function() {
+                                            subtask.completed = this.checked;
+                                    saveTasks();
+                                });
+                                subtaskItem.appendChild(checkbox);
+                                
+                                const subtaskText = document.createElement('div');
+                                subtaskText.className = 'subtask-text' + (subtask.completed ? ' completed' : '');
+                                        subtaskText.textContent = subtask.text;
+                                        subtaskItem.appendChild(subtaskText);
+                                        
+                                subtasksContainer.appendChild(subtaskItem);
+                            });
+                            
+                            taskItem.appendChild(subtasksContainer);
+                        }
+                        
+                        // v1.11: 渲染任务关系（如果有）
+                        if (task.relations && task.relations.length > 0) {
+                            const relationsContainer = document.createElement('div');
+                            relationsContainer.className = 'relation-container';
+                            
+                            task.relations.forEach(relation => {
+                                const relatedTask = tasks.find(t => t.id === relation.taskId);
+                                if (relatedTask) {
+                                    const badge = document.createElement('span');
+                                    badge.className = `relation-badge ${relation.type}`;
+                                    
+                                    let relationLabel;
+                                    switch(relation.type) {
+                                        case 'dependency':
+                                            relationLabel = '依赖于';
+                                            break;
+                                        case 'blocker':
+                                            relationLabel = '阻塞';
+                                            break;
+                                        default:
+                                            relationLabel = '关联';
+                                    }
+                                    
+                                    badge.textContent = `${relationLabel}: ${relatedTask.text.substring(0, 20)}${relatedTask.text.length > 20 ? '...' : ''}`;
+                                    relationsContainer.appendChild(badge);
+                                }
+                            });
+                            
+                            taskItem.appendChild(relationsContainer);
+                        }
                         
                         taskList.appendChild(taskItem);
                     });
@@ -3592,22 +3919,7 @@
                         // 添加点击和触摸事件
                         const deleteClickHandler = function(e) {
                             e.stopPropagation();
-                            if (confirm('确定要删除此历史任务吗？')) {
-                                const taskIndex = tasks.findIndex(t => t.id === task.id);
-                                if (taskIndex !== -1) {
-                                    tasks.splice(taskIndex, 1);
-                                    saveTasks().then(() => {
-                                        renderHistoryTasks();
-                                        updateStats();
-                                    }).catch(error => {
-                                        console.error('删除任务失败:', error);
-                                        alert('删除任务失败，请重试');
-                                    });
-                                } else {
-                                    console.error('找不到要删除的任务');
-                                    alert('找不到要删除的任务');
-                                }
-                            }
+                            showDeleteConfirmModal(task.id);
                         };
                         
                         deleteButton.addEventListener('click', deleteClickHandler);
@@ -4297,26 +4609,72 @@
                         deleteButton.textContent = '删除';
                         deleteButton.addEventListener('click', function(e) {
                             e.stopPropagation();
-                            if (confirm('确定要删除此任务吗？')) {
-                                const taskIndex = tasks.indexOf(task);
-                                tasks.splice(taskIndex, 1);
-                                saveTasks().then(() => {
-                                    updateTagFilter();
-                                    // 这里使用搜索框中的当前值来重新过滤
-                                    const searchTerm = searchInput.value.toLowerCase();
-                                    const newFilteredTasks = tasks.filter(t => 
-                                        t.text.toLowerCase().includes(searchTerm) ||
-                                        (t.tags && t.tags.some(tag => tag.toLowerCase().includes(searchTerm)))
-                                    );
-                                    renderFilteredTasks(newFilteredTasks);
-                                    updateStats();
-                                });
-                            }
+                            showDeleteConfirmModal(task.id);
                         });
                         buttonGroup.appendChild(deleteButton);
                         
-                        // 将按钮组添加到任务项
                         taskItem.appendChild(buttonGroup);
+                        
+                        // v1.11: 渲染子任务（如果有）
+                        if (task.subtasks && task.subtasks.length > 0) {
+                            const subtasksContainer = document.createElement('div');
+                            subtasksContainer.className = 'subtasks-container';
+                            
+                            task.subtasks.forEach(subtask => {
+                                const subtaskItem = document.createElement('div');
+                                subtaskItem.className = 'subtask-item';
+                                
+                                const checkbox = document.createElement('input');
+                                checkbox.type = 'checkbox';
+                                checkbox.className = 'subtask-checkbox';
+                                checkbox.checked = subtask.completed || false;
+                                checkbox.addEventListener('change', function() {
+                                    subtask.completed = this.checked;
+                                    saveTasks();
+                                });
+                                subtaskItem.appendChild(checkbox);
+                                
+                                const subtaskText = document.createElement('div');
+                                subtaskText.className = 'subtask-text' + (subtask.completed ? ' completed' : '');
+                                subtaskText.textContent = subtask.text;
+                                subtaskItem.appendChild(subtaskText);
+                                
+                                subtasksContainer.appendChild(subtaskItem);
+                            });
+                            
+                            taskItem.appendChild(subtasksContainer);
+                        }
+                        
+                        // v1.11: 渲染任务关系（如果有）
+                        if (task.relations && task.relations.length > 0) {
+                            const relationsContainer = document.createElement('div');
+                            relationsContainer.className = 'relation-container';
+                            
+                            task.relations.forEach(relation => {
+                                const relatedTask = tasks.find(t => t.id === relation.taskId);
+                                if (relatedTask) {
+                                    const badge = document.createElement('span');
+                                    badge.className = `relation-badge ${relation.type}`;
+                                    
+                                    let relationLabel;
+                                    switch(relation.type) {
+                                        case 'dependency':
+                                            relationLabel = '依赖于';
+                                            break;
+                                        case 'blocker':
+                                            relationLabel = '阻塞';
+                                            break;
+                                        default:
+                                            relationLabel = '关联';
+                                    }
+                                    
+                                    badge.textContent = `${relationLabel}: ${relatedTask.text.substring(0, 20)}${relatedTask.text.length > 20 ? '...' : ''}`;
+                                    relationsContainer.appendChild(badge);
+                                }
+                            });
+                            
+                            taskItem.appendChild(relationsContainer);
+                        }
                         
                         taskList.appendChild(taskItem);
                     });
@@ -4795,8 +5153,447 @@
                     tasks = orderedTasks;
                     console.log('成功应用任务排序，总任务数:', tasks.length);
                 }
+                
+                // v1.11: 打开子任务模态框
+                function openSubtaskModal(parentTask) {
+                    // 显示父任务信息
+                    document.getElementById('parent-task-name').textContent = parentTask.text;
+                    
+                    // 保存父任务ID到模态框
+                    document.getElementById('subtask-modal').dataset.parentTaskId = parentTask.id;
+                    
+                    // 清空输入
+                    document.getElementById('subtask-input').value = '';
+                    document.getElementById('subtask-priority').value = 'medium';
+                    
+                    // 显示模态框
+                    document.getElementById('subtask-modal').style.display = 'block';
+                }
+                
+                // v1.11: 关闭子任务模态框
+                function closeSubtaskModal() {
+                    document.getElementById('subtask-modal').style.display = 'none';
+                }
+                
+                // v1.11: 添加子任务
+                function addSubtask() {
+                    const parentTaskId = document.getElementById('subtask-modal').dataset.parentTaskId;
+                    const subtaskText = document.getElementById('subtask-input').value.trim();
+                    const subtaskPriority = document.getElementById('subtask-priority').value;
+                    
+                    if (!subtaskText) {
+                        alert('子任务内容不能为空');
+                        return;
+                    }
+                    
+                    // 找到父任务
+                    const parentTask = tasks.find(task => task.id === parentTaskId);
+                    if (!parentTask) {
+                        alert('找不到父任务');
+                        return;
+                    }
+                    
+                    // 确保父任务有子任务数组
+                    if (!parentTask.subtasks) {
+                        parentTask.subtasks = [];
+                    }
+                    
+                    // 创建子任务对象
+                    const subtask = {
+                        id: Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+                        text: subtaskText,
+                        priority: subtaskPriority,
+                        completed: false,
+                        createdAt: new Date().toISOString()
+                    };
+                    
+                    // 添加到父任务的子任务数组
+                    parentTask.subtasks.push(subtask);
+                    
+                    // 保存并关闭模态框
+                    saveTasks().then(() => {
+                        closeSubtaskModal();
+                        renderTasks();
+                    }).catch(error => {
+                        console.error('添加子任务失败:', error);
+                        alert('添加子任务失败，请重试');
+                    });
+                }
+                
+                // v1.11: 打开任务关系模态框
+                function openRelationModal(task) {
+                    // 显示当前任务信息
+                    document.getElementById('current-relation-task-name').textContent = task.text;
+                    
+                    // 保存任务ID到模态框
+                    document.getElementById('relation-modal').dataset.taskId = task.id;
+                    
+                    // 清空关系类型和任务选择
+                    document.getElementById('relation-type').value = 'related';
+                    
+                    // 填充可选的任务列表（除了当前任务）
+                    const relationTaskSelect = document.getElementById('relation-task');
+                    relationTaskSelect.innerHTML = '';
+                    
+                    tasks.forEach(otherTask => {
+                        if (otherTask.id !== task.id) {
+                            const option = document.createElement('option');
+                            option.value = otherTask.id;
+                            option.textContent = otherTask.text;
+                            relationTaskSelect.appendChild(option);
+                        }
+                    });
+                    
+                    // 渲染现有关系
+                    renderExistingRelations(task);
+                    
+                    // 显示模态框
+                    document.getElementById('relation-modal').style.display = 'block';
+                }
+                
+                // v1.11: 关闭任务关系模态框
+                function closeRelationModal() {
+                    document.getElementById('relation-modal').style.display = 'none';
+                }
+                
+                // v1.11: 渲染现有关系
+                function renderExistingRelations(task) {
+                    const relationList = document.getElementById('relation-list');
+                    relationList.innerHTML = '';
+                    
+                    if (!task.relations || task.relations.length === 0) {
+                        relationList.innerHTML = '<div class="no-relations">没有关联任务</div>';
+                        return;
+                    }
+                    
+                    task.relations.forEach(relation => {
+                        const relatedTask = tasks.find(t => t.id === relation.taskId);
+                        if (relatedTask) {
+                            const relationItem = document.createElement('div');
+                            relationItem.className = 'relation-item';
+                            
+                            let relationTypeLabel;
+                            switch(relation.type) {
+                                case 'dependency':
+                                    relationTypeLabel = '依赖于';
+                                    break;
+                                case 'blocker':
+                                    relationTypeLabel = '阻塞';
+                                    break;
+                                default:
+                                    relationTypeLabel = '关联';
+                            }
+                            
+                            relationItem.innerHTML = `
+                                <div class="relation-info">
+                                    <span class="relation-type-label">${relationTypeLabel}:</span>
+                                    <span class="relation-task-name">${relatedTask.text}</span>
+                                </div>
+                                <button class="remove-relation" data-relation-id="${relation.id}">&times;</button>
+                            `;
+                            
+                            relationList.appendChild(relationItem);
+                        }
+                    });
+                    
+                    // 添加删除关系事件
+                    document.querySelectorAll('.remove-relation').forEach(button => {
+                        button.addEventListener('click', function() {
+                            const relationId = this.dataset.relationId;
+                            removeTaskRelation(task.id, relationId);
+                        });
+                    });
+                }
+                
+                // v1.11: 添加任务关系
+                function addTaskRelation() {
+                    const taskId = document.getElementById('relation-modal').dataset.taskId;
+                    const relationType = document.getElementById('relation-type').value;
+                    const relatedTaskId = document.getElementById('relation-task').value;
+                    
+                    if (!relatedTaskId) {
+                        alert('请选择关联任务');
+                        return;
+                    }
+                    
+                    // 找到当前任务
+                    const task = tasks.find(t => t.id === taskId);
+                    if (!task) {
+                        alert('找不到当前任务');
+                        return;
+                    }
+                    
+                    // 确保任务有关系数组
+                    if (!task.relations) {
+                        task.relations = [];
+                    }
+                    
+                    // 检查是否已存在相同关系
+                    const existingRelation = task.relations.find(r => 
+                        r.taskId === relatedTaskId && r.type === relationType
+                    );
+                    
+                    if (existingRelation) {
+                        alert('该关系已存在');
+                        return;
+                    }
+                    
+                    // 创建关系对象
+                    const relation = {
+                        id: Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+                        taskId: relatedTaskId,
+                        type: relationType,
+                        createdAt: new Date().toISOString()
+                    };
+                    
+                    // 添加到任务的关系数组
+                    task.relations.push(relation);
+                    
+                    // 保存并更新关系列表
+                    saveTasks().then(() => {
+                        renderExistingRelations(task);
+                    }).catch(error => {
+                        console.error('添加任务关系失败:', error);
+                        alert('添加任务关系失败，请重试');
+                    });
+                }
+                
+                // v1.11: 删除任务关系
+                function removeTaskRelation(taskId, relationId) {
+                    // 找到当前任务
+                    const task = tasks.find(t => t.id === taskId);
+                    if (!task || !task.relations) {
+                        return;
+                    }
+                    
+                    // 移除指定关系
+                    task.relations = task.relations.filter(r => r.id !== relationId);
+                    
+                    // 保存并更新关系列表
+                    saveTasks().then(() => {
+                        renderExistingRelations(task);
+                    }).catch(error => {
+                        console.error('删除任务关系失败:', error);
+                        alert('删除任务关系失败，请重试');
+                    });
+                }
+                
+                // 初始化加载后添加事件监听器
+                document.addEventListener('DOMContentLoaded', function() {
+                    // 子任务模态框关闭按钮
+                    const subtaskModalClose = document.getElementById('subtask-modal-close');
+                    if (subtaskModalClose) {
+                        subtaskModalClose.addEventListener('click', closeSubtaskModal);
+                    }
+                    
+                    // 添加子任务按钮
+                    const addSubtaskBtn = document.getElementById('add-subtask-btn');
+                    if (addSubtaskBtn) {
+                        addSubtaskBtn.addEventListener('click', addSubtask);
+                    }
+                    
+                    // 关系模态框关闭按钮
+                    const relationModalClose = document.getElementById('relation-modal-close');
+                    if (relationModalClose) {
+                        relationModalClose.addEventListener('click', closeRelationModal);
+                    }
+                    
+                    // 添加关系按钮
+                    const addRelationBtn = document.getElementById('add-relation-btn');
+                    if (addRelationBtn) {
+                        addRelationBtn.addEventListener('click', addTaskRelation);
+                    }
+                    
+                    // 删除确认模态框按钮
+                    const deleteModalClose = document.getElementById('delete-modal-close');
+                    if (deleteModalClose) {
+                        deleteModalClose.addEventListener('click', closeDeleteConfirmModal);
+                    }
+                    
+                    const deleteConfirmNo = document.getElementById('delete-confirm-no');
+                    if (deleteConfirmNo) {
+                        deleteConfirmNo.addEventListener('click', closeDeleteConfirmModal);
+                    }
+                    
+                    const deleteConfirmYes = document.getElementById('delete-confirm-yes');
+                    if (deleteConfirmYes) {
+                        deleteConfirmYes.addEventListener('click', confirmDelete);
+                    }
+                    
+                    // 导出确认模态框按钮
+                    const exportModalClose = document.getElementById('export-modal-close');
+                    if (exportModalClose) {
+                        exportModalClose.addEventListener('click', closeExportConfirmModal);
+                    }
+                    
+                    const exportConfirmNo = document.getElementById('export-confirm-no');
+                    if (exportConfirmNo) {
+                        exportConfirmNo.addEventListener('click', closeExportConfirmModal);
+                    }
+                    
+                    const exportConfirmYes = document.getElementById('export-confirm-yes');
+                    if (exportConfirmYes) {
+                        exportConfirmYes.addEventListener('click', confirmExport);
+                    }
+                });
+                
+                // 全局变量，用于存储当前要删除的任务
+                let currentTaskToDelete = null;
+                
+                // 显示删除确认模态框
+                function showDeleteConfirmModal(taskId) {
+                    currentTaskToDelete = taskId;
+                    const modal = document.getElementById('delete-confirm-modal');
+                    modal.classList.add('active');
+                }
+                
+                // 关闭删除确认模态框
+                function closeDeleteConfirmModal() {
+                    const modal = document.getElementById('delete-confirm-modal');
+                    modal.classList.remove('active');
+                    currentTaskToDelete = null;
+                }
+                
+                // 确认删除操作
+                function confirmDelete() {
+                    if (currentTaskToDelete) {
+                        const taskIndex = tasks.findIndex(t => t.id === currentTaskToDelete);
+                        if (taskIndex !== -1) {
+                            tasks.splice(taskIndex, 1);
+                    saveTasks().then(() => {
+                                updateTagFilter();
+                                renderTasks();
+                            renderHistoryTasks();
+                                updateStats();
+                    }).catch(error => {
+                                console.error('删除任务失败:', error);
+                                alert('删除任务失败，请重试');
+                            });
+                        }
+                    }
+                    closeDeleteConfirmModal();
+                }
+                
+                // 显示导出确认模态框
+                function showExportConfirmModal() {
+                    const modal = document.getElementById('export-confirm-modal');
+                    modal.classList.add('active');
+                }
+                
+                // 关闭导出确认模态框
+                function closeExportConfirmModal() {
+                    const modal = document.getElementById('export-confirm-modal');
+                    modal.classList.remove('active');
+                }
+                
+                // 确认导出操作
+                function confirmExport() {
+                    exportToMarkdown();
+                    closeExportConfirmModal();
+                }
+                
             }); // 这是闭包的结束括号，保留它
         </script>
+    </div>
+    
+    <!-- 删除确认模态框 -->
+    <div id="delete-confirm-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>确认删除</h3>
+                <span id="delete-modal-close" class="modal-close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p>确定要删除此任务吗？此操作无法撤消。</p>
+                </div>
+            <div class="modal-footer">
+                <button id="delete-confirm-no" class="modal-button cancel">取消</button>
+                <button id="delete-confirm-yes" class="modal-button confirm">删除</button>
+                </div>
+                </div>
+            </div>
+
+    <!-- 导出确认模态框 -->
+    <div id="export-confirm-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>确认导出</h3>
+                <span id="export-modal-close" class="modal-close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p>确定要导出所有任务数据吗？将创建一个包含所有任务的JSON文件。</p>
+            </div>
+            <div class="modal-footer">
+                <button id="export-confirm-no" class="modal-button cancel">取消</button>
+                <button id="export-confirm-yes" class="modal-button confirm">导出</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- v1.11新增：子任务模态框 -->
+    <div id="subtask-modal" class="task-relationship-modal">
+        <div class="task-relationship-content">
+            <div class="task-relationship-header">
+                <h3 class="task-relationship-title">添加子任务</h3>
+                <button id="subtask-modal-close" class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-section">
+                    <div class="modal-section-title">父任务</div>
+                    <div id="parent-task-name" class="parent-task-display"></div>
+                </div>
+                <div class="modal-section">
+                    <div class="modal-section-title">子任务内容</div>
+                    <input type="text" id="subtask-input" class="subtask-input" placeholder="输入子任务内容...">
+                </div>
+                <div class="modal-section">
+                    <div class="modal-section-title">优先级</div>
+                    <select id="subtask-priority" class="relation-type-select">
+                        <option value="low">低</option>
+                        <option value="medium" selected>中</option>
+                        <option value="high">高</option>
+                        <option value="urgent">紧急</option>
+                    </select>
+                </div>
+                <div class="modal-section">
+                    <button id="add-subtask-btn" class="add-subtask-btn">添加子任务</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- v1.11新增：任务关系模态框 -->
+    <div id="relation-modal" class="task-relationship-modal">
+        <div class="task-relationship-content">
+            <div class="task-relationship-header">
+                <h3 class="task-relationship-title">管理任务关系</h3>
+                <button id="relation-modal-close" class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-section">
+                    <div class="modal-section-title">当前任务</div>
+                    <div id="current-relation-task-name" class="parent-task-display"></div>
+                </div>
+                <div class="modal-section">
+                    <div class="modal-section-title">添加关联</div>
+                    <select id="relation-type" class="relation-type-select">
+                        <option value="related">相关任务</option>
+                        <option value="dependency">依赖任务（当前任务依赖于所选任务）</option>
+                        <option value="blocker">阻塞任务（所选任务被当前任务阻塞）</option>
+                    </select>
+                    <select id="relation-task" class="relation-tasks-select">
+                        <!-- 动态填充任务列表 -->
+                    </select>
+                    <button id="add-relation-btn" class="add-relation-btn">添加关系</button>
+                </div>
+                <div class="modal-section">
+                    <div class="modal-section-title">现有关系</div>
+                    <div id="relation-list" class="relation-list">
+                        <!-- 动态填充关系列表 -->
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </body>
 </html>
