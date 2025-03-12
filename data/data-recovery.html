@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数据恢复工具</title>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2196F3;
+            text-align: center;
+        }
+        .log-container {
+            margin: 20px 0;
+            padding: 10px;
+            background-color: #f0f0f0;
+            border-radius: 4px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+        }
+        .log-item {
+            margin: 5px 0;
+            line-height: 1.4;
+        }
+        .log-info {
+            color: #2196F3;
+        }
+        .log-success {
+            color: #4CAF50;
+        }
+        .log-warning {
+            color: #FF9800;
+        }
+        .log-error {
+            color: #F44336;
+        }
+        button {
+            background-color: #2196F3;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-right: 10px;
+            margin-bottom: 8px;
+        }
+        button:hover {
+            background-color: #1976D2;
+        }
+        .auth-container {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        input {
+            display: block;
+            width: 100%;
+            padding: 8px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .stats {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #e8f5e9;
+            border-radius: 4px;
+        }
+        .backup-container {
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: #e3f2fd;
+        }
+        .backup-list {
+            margin-top: 10px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .backup-item {
+            padding: 8px;
+            margin: 5px 0;
+            background-color: #f5f5f5;
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .backup-item:hover {
+            background-color: #e0e0e0;
+        }
+        .backup-actions {
+            display: flex;
+            gap: 5px;
+        }
+        .action-btn {
+            background-color: #90caf9;
+            color: #1565c0;
+            border-radius: 4px;
+            border: none;
+            padding: 3px 8px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .download-btn {
+            background-color: #a5d6a7;
+            color: #2e7d32;
+        }
+        .restore-btn {
+            background-color: #ffcc80;
+            color: #ef6c00;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>任务数据恢复工具</h1>
+        
+        <div class="auth-container">
+            <h3>登录管理员账户</h3>
+            <input type="email" id="email" placeholder="邮箱" value="admin@example.com">
+            <input type="password" id="password" placeholder="密码">
+            <button id="login-btn">登录</button>
+        </div>
+        
+        <div class="actions">
+            <button id="check-data-btn">检查数据</button>
+            <button id="migrate-data-btn" disabled>迁移数据</button>
+            <button id="reset-migration-btn" disabled>重置迁移状态</button>
+            <button id="fix-btn" disabled>修复用户数据路径</button>
+            <button id="backup-btn" disabled>备份数据</button>
+        </div>
+        
+        <div class="stats" id="stats-container">
+            <div id="old-data-stats"></div>
+            <div id="user-data-stats"></div>
+            <div id="migration-status"></div>
+        </div>
+        
+        <div class="backup-container" id="backup-container" style="display: none;">
+            <h3>数据备份</h3>
+            <p>在这里您可以创建新的备份或恢复现有备份。每个备份都包含当前完整的数据库内容。</p>
+            <button id="create-backup-btn">创建新备份</button>
+            <div class="backup-list" id="backup-list">
+                <!-- 备份列表将在这里动态生成 -->
+            </div>
+        </div>
+        
+        <div class="log-container">
+            <div id="log"></div>
+        </div>
+    </div>
+
+    <script>
+        // Firebase 配置
+        const firebaseConfig = {
+            apiKey: "AIzaSyA1sDNgbBZ--kOF-AUGt0sCspUHo0trxd4",
+            authDomain: "undo-list-fd50a.firebaseapp.com",
+            databaseURL: "https://undo-list-fd50a-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "undo-list-fd50a",
+            storageBucket: "undo-list-fd50a.firebasestorage.app",
+            messagingSenderId: "34325973361",
+            appId: "1:34325973361:web:041a4468f47aa41ed14ed0",
+            measurementId: "G-VX30ESBEWY"
+        };
+        
+        // 初始化 Firebase
+        firebase.initializeApp(firebaseConfig);
+        
+        // 获取数据库引用
+        const database = firebase.database();
+        
+        // DOM元素
+        const logEl = document.getElementById('log');
+        const emailEl = document.getElementById('email');
+        const passwordEl = document.getElementById('password');
+        const loginBtn = document.getElementById('login-btn');
+        const checkDataBtn = document.getElementById('check-data-btn');
+        const migrateDataBtn = document.getElementById('migrate-data-btn');
+        const resetMigrationBtn = document.getElementById('reset-migration-btn');
+        const fixBtn = document.getElementById('fix-btn');
+        const backupBtn = document.getElementById('backup-btn');
+        const backupContainer = document.getElementById('backup-container');
+        const createBackupBtn = document.getElementById('create-backup-btn');
+        const backupListEl = document.getElementById('backup-list');
+        const oldDataStatsEl = document.getElementById('old-data-stats');
+        const userDataStatsEl = document.getElementById('user-data-stats');
+        const migrationStatusEl = document.getElementById('migration-status');
+        
+        // 当前用户
+        let currentUser = null;
+        
+        // 备份列表
+        let backups = [];
+        
+        // 日志函数
+        function log(message, type = 'info') {
+            const logItem = document.createElement('div');
+            logItem.className = `log-item log-${type}`;
+            logItem.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logEl.appendChild(logItem);
+            logEl.scrollTop = logEl.scrollHeight;
+            console.log(`[${type}]`, message);
+        }
+        
+        // 登录
+        loginBtn.addEventListener('click', async () => {
+            const email = emailEl.value.trim();
+            const password = passwordEl.value.trim();
+            
+            if (!email || !password) {
+                log('请输入邮箱和密码', 'error');
+                return;
+            }
+            
+            try {
+                log(`尝试登录: ${email}`);
+                const userCredential = await firebase.auth().signInWithEmailAndPassword(email, password);
+                currentUser = userCredential.user;
+                log(`登录成功: ${currentUser.email}`, 'success');
+                
+                migrateDataBtn.disabled = false;
+                resetMigrationBtn.disabled = false;
+                fixBtn.disabled = false;
+                backupBtn.disabled = false;
+                backupContainer.style.display = 'block';
+                
+                // 自动检查数据
+                checkData();
+                
+                // 加载备份列表
+                loadBackups();
+            } catch (error) {
+                log(`登录失败: ${error.message}`, 'error');
+            }
+        });
+        
+        // 检查数据
+        checkDataBtn.addEventListener('click', checkData);
+        
+        async function checkData() {
+            try {
+                log('正在检查数据...');
+                
+                // 检查旧数据路径
+                const oldTasksSnapshot = await database.ref('tasks').once('value');
+                const oldTasks = oldTasksSnapshot.val() || {};
+                const oldTasksCount = Object.keys(oldTasks).length;
+                
+                oldDataStatsEl.innerHTML = `<h4>旧数据路径 (/tasks)</h4>
+                                           <p>任务数量: ${oldTasksCount}</p>`;
+                
+                log(`旧数据路径任务数量: ${oldTasksCount}`);
+                
+                // 检查迁移状态
+                const migrationStatusSnapshot = await database.ref('migration_status').once('value');
+                const migrationStatus = migrationStatusSnapshot.val() || {};
+                
+                migrationStatusEl.innerHTML = `<h4>迁移状态</h4>
+                                             <p>完成状态: ${migrationStatus.completed ? '已完成' : '未完成'}</p>
+                                             <p>时间戳: ${migrationStatus.timestamp || 'N/A'}</p>
+                                             <p>用户ID: ${migrationStatus.userId || 'N/A'}</p>`;
+                
+                log(`迁移状态: ${JSON.stringify(migrationStatus)}`);
+                
+                // 检查用户数据路径
+                if (currentUser) {
+                    const userId = currentUser.uid;
+                    const userTasksSnapshot = await database.ref(`users/${userId}/tasks`).once('value');
+                    const userTasks = userTasksSnapshot.val() || {};
+                    const userTasksCount = Object.keys(userTasks).length;
+                    
+                    userDataStatsEl.innerHTML = `<h4>用户数据路径 (/users/${userId}/tasks)</h4>
+                                               <p>任务数量: ${userTasksCount}</p>`;
+                    
+                    log(`用户数据路径任务数量: ${userTasksCount}`);
+                }
+            } catch (error) {
+                log(`检查数据失败: ${error.message}`, 'error');
+            }
+        }
+        
+        // 迁移数据
+        migrateDataBtn.addEventListener('click', async () => {
+            if (!currentUser) {
+                log('请先登录', 'error');
+                return;
+            }
+            
+            try {
+                log('开始迁移数据...');
+                const userId = currentUser.uid;
+                
+                // 读取旧数据
+                const oldTasksSnapshot = await database.ref('tasks').once('value');
+                const oldTasks = oldTasksSnapshot.val() || {};
+                const oldTasksCount = Object.keys(oldTasks).length;
+                
+                if (oldTasksCount === 0) {
+                    log('旧数据路径没有任务，无需迁移', 'warning');
+                    return;
+                }
+                
+                // 读取现有用户数据
+                const userTasksSnapshot = await database.ref(`users/${userId}/tasks`).once('value');
+                const userTasks = userTasksSnapshot.val() || {};
+                
+                // 合并数据（保留用户数据中已有的任务）
+                const tasksToSave = { ...oldTasks, ...userTasks };
+                
+                // 保存到用户路径
+                await database.ref(`users/${userId}/tasks`).set(tasksToSave);
+                
+                log(`成功将 ${oldTasksCount} 条任务迁移到用户路径`, 'success');
+                
+                // 设置迁移状态
+                await database.ref('migration_status').set({
+                    completed: true,
+                    timestamp: new Date().toISOString(),
+                    userId: userId
+                });
+                
+                log('迁移状态已更新', 'success');
+                
+                // 重新检查数据
+                await checkData();
+            } catch (error) {
+                log(`迁移数据失败: ${error.message}`, 'error');
+            }
+        });
+        
+        // 重置迁移状态
+        resetMigrationBtn.addEventListener('click', async () => {
+            try {
+                log('正在重置迁移状态...');
+                
+                await database.ref('migration_status').set({
+                    completed: false,
+                    timestamp: new Date().toISOString(),
+                    userId: currentUser ? currentUser.uid : null
+                });
+                
+                log('迁移状态已重置', 'success');
+                
+                // 重新检查数据
+                await checkData();
+            } catch (error) {
+                log(`重置迁移状态失败: ${error.message}`, 'error');
+            }
+        });
+        
+        // 修复用户数据路径
+        fixBtn.addEventListener('click', async () => {
+            if (!currentUser) {
+                log('请先登录', 'error');
+                return;
+            }
+            
+            try {
+                log('开始修复用户数据路径...');
+                const userId = currentUser.uid;
+                
+                // 读取旧数据
+                const oldTasksSnapshot = await database.ref('tasks').once('value');
+                const oldTasks = oldTasksSnapshot.val() || {};
+                
+                if (!oldTasks || Object.keys(oldTasks).length === 0) {
+                    log('旧数据路径没有任务，无法修复', 'warning');
+                    return;
+                }
+                
+                // 清空并重新保存到用户路径
+                await database.ref(`users/${userId}/tasks`).set(oldTasks);
+                
+                log(`成功修复用户数据路径，共 ${Object.keys(oldTasks).length} 条任务`, 'success');
+                
+                // 重新检查数据
+                await checkData();
+                
+                // 提示
+                log('修复完成，请刷新你的待办事项应用并重新登录', 'info');
+            } catch (error) {
+                log(`修复用户数据路径失败: ${error.message}`, 'error');
+            }
+        });
+        
+        // 备份相关功能
+        backupBtn.addEventListener('click', () => {
+            backupContainer.style.display = backupContainer.style.display === 'none' ? 'block' : 'none';
+            if (backupContainer.style.display === 'block') {
+                loadBackups();
+            }
+        });
+        
+        // 加载备份列表
+        async function loadBackups() {
+            try {
+                log('正在加载备份列表...');
+                
+                // 从Firebase获取备份列表
+                const backupsSnapshot = await database.ref('backups').once('value');
+                backups = backupsSnapshot.val() || {};
+                
+                renderBackupsList();
+                
+                log(`加载了 ${Object.keys(backups).length} 个备份`, 'success');
+            } catch (error) {
+                log(`加载备份列表失败: ${error.message}`, 'error');
+            }
+        }
+        
+        // 渲染备份列表
+        function renderBackupsList() {
+            backupListEl.innerHTML = '';
+            
+            const backupIds = Object.keys(backups).sort().reverse();
+            
+            if (backupIds.length === 0) {
+                const noBackupsEl = document.createElement('div');
+                noBackupsEl.className = 'backup-item';
+                noBackupsEl.textContent = '暂无备份，点击上方按钮创建新备份';
+                backupListEl.appendChild(noBackupsEl);
+                return;
+            }
+            
+            backupIds.forEach(backupId => {
+                const backup = backups[backupId];
+                const backupDate = new Date(backup.timestamp);
+                
+                const backupItemEl = document.createElement('div');
+                backupItemEl.className = 'backup-item';
+                
+                const backupInfoEl = document.createElement('div');
+                backupInfoEl.innerHTML = `
+                    <strong>${backupDate.toLocaleString()}</strong>
+                    <div>任务数量: ${backup.taskCount || '未知'}</div>
+                    <div>备份大小: ${(backup.size / 1024).toFixed(2)} KB</div>
+                `;
+                
+                const actionsEl = document.createElement('div');
+                actionsEl.className = 'backup-actions';
+                
+                const downloadBtn = document.createElement('button');
+                downloadBtn.className = 'action-btn download-btn';
+                downloadBtn.textContent = '下载';
+                downloadBtn.addEventListener('click', () => downloadBackup(backupId, backup));
+                
+                const restoreBtn = document.createElement('button');
+                restoreBtn.className = 'action-btn restore-btn';
+                restoreBtn.textContent = '恢复';
+                restoreBtn.addEventListener('click', () => restoreBackup(backupId, backup));
+                
+                actionsEl.appendChild(downloadBtn);
+                actionsEl.appendChild(restoreBtn);
+                
+                backupItemEl.appendChild(backupInfoEl);
+                backupItemEl.appendChild(actionsEl);
+                
+                backupListEl.appendChild(backupItemEl);
+            });
+        }
+        
+        // 创建备份
+        createBackupBtn.addEventListener('click', async () => {
+            if (!currentUser) {
+                log('请先登录', 'error');
+                return;
+            }
+            
+            try {
+                log('开始创建备份...');
+                
+                // 获取全部数据
+                const snapshot = await database.ref('/').once('value');
+                const data = snapshot.val();
+                
+                // 计算任务数量
+                let taskCount = 0;
+                
+                // 计算旧版本任务
+                if (data.tasks) {
+                    taskCount += Object.keys(data.tasks).length;
+                }
+                
+                // 计算用户任务
+                if (data.users) {
+                    Object.keys(data.users).forEach(userId => {
+                        if (data.users[userId] && data.users[userId].tasks) {
+                            taskCount += Object.keys(data.users[userId].tasks).length;
+                        }
+                    });
+                }
+                
+                // 生成备份ID
+                const backupId = Date.now().toString();
+                const dataJson = JSON.stringify(data);
+                
+                // 备份元数据
+                const backupMeta = {
+                    timestamp: new Date().toISOString(),
+                    userId: currentUser.uid,
+                    taskCount: taskCount,
+                    size: dataJson.length
+                };
+                
+                // 保存备份
+                await database.ref(`backups/${backupId}/meta`).set(backupMeta);
+                await database.ref(`backups/${backupId}/data`).set(data);
+                
+                log(`备份创建成功，ID: ${backupId}`, 'success');
+                
+                // 重新加载备份列表
+                await loadBackups();
+            } catch (error) {
+                log(`创建备份失败: ${error.message}`, 'error');
+            }
+        });
+        
+        // 下载备份
+        async function downloadBackup(backupId, backup) {
+            try {
+                log(`正在准备下载备份 ${backupId}...`);
+                
+                // 获取备份数据
+                const backupDataSnapshot = await database.ref(`backups/${backupId}/data`).once('value');
+                const backupData = backupDataSnapshot.val();
+                
+                if (!backupData) {
+                    log(`备份 ${backupId} 不包含数据`, 'error');
+                    return;
+                }
+                
+                // 创建下载内容
+                const dataStr = JSON.stringify(backupData, null, 2);
+                const dataBlob = new Blob([dataStr], { type: 'application/json' });
+                
+                // 创建下载链接
+                const date = new Date(backup.timestamp || Date.now());
+                const dateStr = `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}${String(date.getDate()).padStart(2, '0')}`;
+                const filename = `todo_backup_${dateStr}.json`;
+                
+                const url = URL.createObjectURL(dataBlob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = filename;
+                
+                // 触发下载
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                
+                log(`备份 ${backupId} 下载已开始`, 'success');
+            } catch (error) {
+                log(`下载备份失败: ${error.message}`, 'error');
+            }
+        }
+        
+        // 恢复备份
+        async function restoreBackup(backupId, backup) {
+            if (!currentUser) {
+                log('请先登录', 'error');
+                return;
+            }
+            
+            if (!confirm(`确定要恢复备份 ${new Date(backup.timestamp).toLocaleString()} 吗？这将覆盖当前数据！`)) {
+                return;
+            }
+            
+            try {
+                log(`开始恢复备份 ${backupId}...`);
+                
+                // 获取备份数据
+                const backupDataSnapshot = await database.ref(`backups/${backupId}/data`).once('value');
+                const backupData = backupDataSnapshot.val();
+                
+                if (!backupData) {
+                    log(`备份 ${backupId} 不包含数据`, 'error');
+                    return;
+                }
+                
+                // 先创建当前状态的备份
+                log('创建当前状态的备份以防止数据丢失...');
+                const currentSnapshot = await database.ref('/').once('value');
+                const currentData = currentSnapshot.val();
+                
+                const autoBackupId = `auto_${Date.now()}`;
+                await database.ref(`backups/${autoBackupId}/meta`).set({
+                    timestamp: new Date().toISOString(),
+                    userId: currentUser.uid,
+                    note: '恢复备份前的自动备份',
+                    size: JSON.stringify(currentData).length
+                });
+                await database.ref(`backups/${autoBackupId}/data`).set(currentData);
+                
+                log('自动备份已创建');
+                
+                // 恢复备份数据
+                // 先恢复用户数据，再恢复其他数据
+                if (backupData.users) {
+                    await database.ref('users').set(backupData.users);
+                }
+                
+                if (backupData.tasks) {
+                    await database.ref('tasks').set(backupData.tasks);
+                }
+                
+                if (backupData.orders) {
+                    await database.ref('orders').set(backupData.orders);
+                }
+                
+                if (backupData.migration_status) {
+                    await database.ref('migration_status').set(backupData.migration_status);
+                }
+                
+                log(`备份 ${backupId} 恢复成功`, 'success');
+                
+                // 重新检查数据
+                await checkData();
+                
+                // 提示
+                log('恢复完成，请刷新你的待办事项应用并重新登录', 'info');
+            } catch (error) {
+                log(`恢复备份失败: ${error.message}`, 'error');
+            }
+        }
+        
+        // 初始检查
+        log('数据恢复工具已初始化');
+    </script>
+</body>
+</html> 
