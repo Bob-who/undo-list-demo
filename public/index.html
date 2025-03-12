@@ -2468,6 +2468,12 @@
                 // 获取数据库引用
                 const database = firebase.database();
                 
+                // 获取任务数据的引用
+                const tasksRef = database.ref('tasks');
+                
+                // 添加标志来管理同步状态
+                let isSyncing = false;
+                
                 // 获取认证服务引用
                 const auth = firebase.auth();
                 
@@ -2663,37 +2669,56 @@
                 
                 // 加载用户任务数据
                 function loadUserTasks() {
-                    if (!currentUser) return;
+                    if (!currentUser) {
+                        console.log('用户未登录，无法加载用户特定任务');
+                        return Promise.reject(new Error('用户未登录'));
+                    }
                     
                     const userId = currentUser.uid;
+                    console.log('加载用户特定任务，用户ID:', userId);
                     
                     // 从特定用户的数据路径读取任务
-                    database.ref('users/' + userId + '/tasks').once('value')
-                        .then((snapshot) => {
-                            const data = snapshot.val();
-                            if (data) {
-                                tasks = Object.values(data);
-                                console.log('成功加载用户任务，数量:', tasks.length);
-                            } else {
-                                tasks = [];
-                                console.log('用户没有任务');
-                            }
-                            
-                            // 迁移旧数据（如果用户是admin）
-                            if (currentUser.email === 'admin@example.com') {
-                                migrateOldData();
-                            } else {
-                                // 正常渲染任务
-                                renderTasks();
-                                updateTagFilter();
-                                updateStats();
-                                // 恢复任务排序
-                                restoreTaskOrder();
-                            }
-                        })
-                        .catch((error) => {
-                            console.error('加载任务失败:', error);
-                        });
+                    return new Promise((resolve, reject) => {
+                        database.ref('users/' + userId + '/tasks').once('value')
+                            .then((snapshot) => {
+                                const data = snapshot.val();
+                                if (data) {
+                                    tasks = Object.values(data);
+                                    console.log('成功加载用户任务，数量:', tasks.length);
+                                } else {
+                                    tasks = [];
+                                    console.log('用户没有任务');
+                                }
+                                
+                                // 迁移旧数据（如果用户是admin）
+                                if (currentUser.email === 'admin@example.com') {
+                                    migrateOldData().then(() => {
+                                        // 正常渲染任务
+                                        renderTasks();
+                                        updateTagFilter();
+                                        updateStats();
+                                        // 恢复任务排序
+                                        restoreTaskOrder();
+                                        resolve(true);
+                                    }).catch(error => {
+                                        console.error('迁移数据失败:', error);
+                                        resolve(true);
+                                    });
+                                } else {
+                                    // 正常渲染任务
+                                    renderTasks();
+                                    updateTagFilter();
+                                    updateStats();
+                                    // 恢复任务排序
+                                    restoreTaskOrder();
+                                    resolve(true);
+                                }
+                            })
+                            .catch((error) => {
+                                console.error('加载任务失败:', error);
+                                reject(error);
+                            });
+                    });
                 }
                 
                 // 迁移旧数据到admin用户（仅执行一次）
@@ -5091,6 +5116,167 @@
                     e.preventDefault(); // 防止默认行为
                     addTask();
                 });
+
+                // 从服务器加载任务
+                function loadTasks() {
+                    console.log('从 Firebase 加载任务...');
+                    
+                    // 如果用户已登录，则使用用户特定的数据
+                    if (typeof currentUser !== 'undefined' && currentUser) {
+                        const userId = currentUser.uid;
+                        console.log('加载用户特定任务:', userId);
+                        return loadUserTasks();
+                    }
+                    
+                    return new Promise((resolve, reject) => {
+                        tasksRef.once('value')
+                            .then(snapshot => {
+                                const data = snapshot.val();
+                                if (data) {
+                                    tasks = Object.values(data);
+                                    console.log('成功从 Firebase 加载任务，数量:', tasks.length);
+                                    
+                                    // 确保任务属性完整
+                                    ensureTaskProperties();
+                                    
+                                    // 恢复排序状态
+                                    restoreTaskOrder();
+                                } else {
+                                    console.log('Firebase 中没有任务数据，尝试从本地存储加载');
+                                    try {
+                                        const localTasks = localStorage.getItem('tasks');
+                                        if (localTasks) {
+                                            tasks = JSON.parse(localTasks);
+                                            console.log('从本地存储加载任务成功，数量:', tasks.length);
+                                            
+                                            // 确保任务属性完整
+                                            ensureTaskProperties();
+                                            
+                                            // 恢复排序状态
+                                            restoreTaskOrder();
+                                            
+                                            resolve(true);
+                                        } else {
+                                            console.log('本地存储中没有任务数据');
+                                            tasks = [];
+                                            resolve(false);
+                                        }
+                                    } catch (e) {
+                                        console.error('从本地存储加载也失败:', e);
+                                        tasks = [];
+                                        resolve(false);
+                                    }
+                                }
+                                resolve(true);
+                            })
+                            .catch(error => {
+                                console.error('从 Firebase 加载任务失败:', error);
+                                
+                                // 尝试从本地存储加载
+                                try {
+                                    const localTasks = localStorage.getItem('tasks');
+                                    if (localTasks) {
+                                        tasks = JSON.parse(localTasks);
+                                        console.log('从本地存储加载任务成功，数量:', tasks.length);
+                                        
+                                        // 恢复排序状态
+                                        restoreTaskOrder();
+                                        
+                                        resolve(true);
+                                    } else {
+                                        console.log('本地存储中没有任务数据');
+                                        tasks = [];
+                                        resolve(false);
+                                    }
+                                } catch (e) {
+                                    console.error('从本地存储加载也失败:', e);
+                                    tasks = [];
+                                    resolve(false);
+                                }
+                            });
+                    });
+                }
+                
+                // 设置实时同步
+                function setupRealtimeSync() {
+                    // 设置实时数据同步
+                    tasksRef.on('value', (snapshot) => {
+                        const data = snapshot.val();
+                        if (data) {
+                            // 只在数据确实发生变化时更新
+                            const newTasks = Object.values(data);
+                            if (JSON.stringify(newTasks) !== JSON.stringify(tasks)) {
+                                console.log('从Firebase接收实时更新，数量:', newTasks.length);
+                                tasks = newTasks;
+                                renderTasks();
+                                renderHistoryTasks();
+                                updateTagFilter();
+                                updateStats();
+                            }
+                        }
+                    });
+                }
+                
+                // 设置文件操作处理
+                function setupFileOperations() {
+                    // 这里可以添加文件导入/导出相关的设置
+                    console.log('设置文件操作处理完成');
+                }
+
+                // 添加标志来管理同步状态
+                let isSyncing = false;
+                
+                // 获取认证服务引用
+                const auth = firebase.auth();
+                
+                // 获取DOM元素
+                const taskInput = document.getElementById('task-input');
+                const prioritySelect = document.getElementById('priority-select');
+                const dueDateInput = document.getElementById('due-date');
+                const tagInput = document.getElementById('tag-input');
+                const addButton = document.getElementById('add-button');
+                const taskList = document.getElementById('task-list');
+                const emptyMessage = document.getElementById('empty-message');
+                const sidebar = document.getElementById('sidebar');
+                const tagFilter = document.getElementById('tag-filter');
+                const currentFilter = document.getElementById('current-filter');
+                const filterText = document.getElementById('filter-text');
+                const totalTasks = document.getElementById('total-tasks');
+                const completedTasks = document.getElementById('completed-tasks');
+                const exportButton = document.getElementById('export-button');
+                const inlineTagFilter = document.getElementById('inline-tag-filter');
+                
+                // 任务数组
+                let tasks = [];
+                
+                // 编辑模态框元素
+                const editModal = document.getElementById('edit-modal');
+                const editTaskInput = document.getElementById('edit-task-input');
+                const editPrioritySelect = document.getElementById('edit-priority-select');
+                const editDueDateInput = document.getElementById('edit-due-date');
+                const editTagInput = document.getElementById('edit-tag-input');
+                const editModalClose = document.getElementById('edit-modal-close');
+                const editCancelButton = document.getElementById('edit-cancel-button');
+                const editSaveButton = document.getElementById('edit-save-button');
+                const sidebarToggle = document.getElementById('sidebar-toggle');
+                
+                // 状态变量
+                let currentFilterTag = null;
+                let currentEditingTaskIndex = -1;
+                
+                // 获取标签页和容器元素
+                const currentTasksTab = document.getElementById('current-tasks-tab');
+                const historyTasksTab = document.getElementById('history-tasks-tab');
+                const currentTasksContainer = document.getElementById('current-tasks-container');
+                const historyTasksContainer = document.getElementById('history-tasks-container');
+                const historyTaskList = document.getElementById('history-task-list');
+                
+                // 当前视图状态
+                let currentView = 'current';
+                
+                // 标签页切换事件
+                currentTasksTab.addEventListener('click', () => switchView('current'));
+                historyTasksTab.addEventListener('click', () => switchView('history'));
             }); // 这是闭包的结束括号，保留它
         </script>
     </div>
