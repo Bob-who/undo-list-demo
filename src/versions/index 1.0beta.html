@@ -2326,12 +2326,18 @@
                 
                 // 监听认证状态变化
                 firebase.auth().onAuthStateChanged(function(user) {
-                    if (user) {
-                        // 用户已登录
-                        console.log('用户已登录:', user.email);
-                        currentUser = user;
-                        updateUserInfo(user);
-                        authContainer.style.display = 'none';
+    if (user) {
+        // 用户已登录
+        console.log('用户已登录:', user.email);
+        currentUser = user;
+        updateUserInfo(user);
+        authContainer.style.display = 'none';
+        
+        // 设置用户特定的任务引用
+        tasksRef = database.ref('users/' + user.uid + '/tasks');
+                        
+                        // 设置用户特定的任务引用
+                        tasksRef = database.ref('users/' + user.uid + '/tasks');
                         
                         // 加载用户的任务数据
                         loadUserTasks();
@@ -2340,6 +2346,9 @@
                         console.log('用户未登录');
                         currentUser = null;
                         updateUserInfo(null);
+                        
+                        // 重置任务引用
+                        tasksRef = null;
                         
                         // 显示登录界面
                         authContainer.style.display = 'flex';
@@ -2551,29 +2560,50 @@
                 
                 // 修改saveTaskOrder函数，配合新的数据结构
                 function saveTaskOrder() {
-                    try {
-                        if (!tasks.length || !currentUser) return;
-                        
-                        const taskOrder = tasks
-                            .filter(task => !task.completed)
-                            .map(task => task.id);
-                            
-                        console.log('保存排序状态，任务ID数:', taskOrder.length);
-                        localStorage.setItem('taskOrder', JSON.stringify(taskOrder));
-                        
-                        // 保存到Firebase
-                        const userId = currentUser.uid;
-                        const deviceId = getDeviceId();
-                        
-                        firebase.database().ref(`users/${userId}/orders/${deviceId}`).set({ 
-                            taskOrder: taskOrder,
-                            lastUpdated: new Date().toISOString()
-                        }).catch(error => {
-                            console.error('保存排序到Firebase失败:', error);
-                        });
-                    } catch (e) {
-                        console.error('保存排序失败:', e);
-                    }
+                    // 获取当前所有任务项的索引顺序
+                    const taskIndexes = Array.from(taskList.querySelectorAll('.task-item')).map(item => {
+                        return parseInt(item.getAttribute('data-index'));
+                    });
+                    
+                    // 根据索引顺序重新排列任务
+                    const orderedTasks = [];
+                    taskIndexes.forEach(index => {
+                        if (index >= 0 && index < tasks.length) {
+                            orderedTasks.push(tasks[index]);
+                        }
+                    });
+                    
+                    // 区分已完成和未完成任务
+                    const incompleteTasks = tasks.filter(task => !task.completed);
+                    const completedTasks = tasks.filter(task => task.completed);
+                    
+                    // 保存新的排序到任务数组
+                    tasks = [
+                        ...orderedTasks.filter(task => !task.completed), 
+                        ...completedTasks.filter(task => !orderedTasks.includes(task))
+                    ];
+                    
+                    // v1.06: 保存排序到Firebase，解决跨平台同步问题
+                    const orderIds = tasks.filter(task => !task.completed).map(task => task.id);
+                    
+                    // 1. 保存到本地存储
+                    localStorage.setItem('taskOrder', JSON.stringify(orderIds));
+                    
+                    // 2. 保存到Firebase中的排序节点
+                    const deviceId = getDeviceId();
+                    const orderRef = firebase.database().ref(`users/${currentUser.uid}/orders/${deviceId}`);
+                    orderRef.set({ 
+                        taskOrder: orderIds,
+                        lastUpdated: new Date().toISOString()
+                    }).catch(error => {
+                        console.error('保存排序到Firebase失败:', error);
+                    });
+                    
+                    // 3. 保存任务数据
+                    saveTasks().then(() => {
+                        // 更新统计
+                        updateStats();
+                    });
                 }
                 
                 // 添加标志来管理同步状态
@@ -2725,6 +2755,11 @@
                 function loadTasks() {
                     console.log('从 Firebase 加载任务...');
                     
+                    if (!currentUser || !tasksRef) {
+                        console.log('用户未登录或任务引用未设置，无法加载任务');
+                        return Promise.resolve(false);
+                    }
+                    
                     return new Promise((resolve, reject) => {
                         tasksRef.once('value')
                             .then(snapshot => {
@@ -2738,6 +2773,7 @@
                                     
                                     // v1.05: 恢复排序状态
                                     restoreTaskOrder();
+                                    resolve(true);
                                 } else {
                                     console.log('Firebase 中没有任务数据，尝试从本地存储加载');
                                     try {
@@ -2748,9 +2784,6 @@
                                             
                                             // v1.05: 确保任务属性完整
                                             ensureTaskProperties();
-                                            
-                                            // v1.05: 恢复排序状态
-                                            restoreTaskOrder();
                                             
                                             // v1.05: 恢复排序状态
                                             restoreTaskOrder();
@@ -2767,7 +2800,6 @@
                                         resolve(false);
                                     }
                                 }
-                                resolve(true);
                             })
                             .catch(error => {
                                 console.error('从 Firebase 加载任务失败:', error);
@@ -2866,7 +2898,7 @@
                     
                     // 2. 保存到Firebase中的排序节点
                     const deviceId = getDeviceId();
-                    const orderRef = firebase.database().ref(`orders/${deviceId}`);
+                    const orderRef = firebase.database().ref(`users/${currentUser.uid}/orders/${deviceId}`);
                     orderRef.set({ 
                         taskOrder: orderIds,
                         lastUpdated: new Date().toISOString()
@@ -2881,50 +2913,7 @@
                     });
                 }
                 
-                // 保存任务
-                function saveTasks() {
-                    console.log('保存任务到 Firebase...');
-                    
-                    // 防止重复同步
-                    if (isSyncing) {
-                        console.log('已有保存操作在进行中，跳过');
-                        return Promise.resolve(true);
-                    }
-                    
-                    isSyncing = true;
-                    
-                    // 同时保存到本地存储作为备份
-                    try {
-                        localStorage.setItem('tasks', JSON.stringify(tasks));
-                        console.log('任务已备份到本地存储，数量:', tasks.length);
-                    } catch (e) {
-                        console.error('保存到本地存储失败:', e);
-                    }
-                    
-                    // 准备要保存到 Firebase 的数据结构
-                    const tasksToSave = {};
-                    tasks.forEach(task => {
-                        // 确保每个任务有唯一ID
-                        if (!task.id) {
-                            task.id = Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-                        }
-                        tasksToSave[task.id] = task;
-                    });
-                    
-                    // 保存到 Firebase
-                    return tasksRef.set(tasksToSave)
-                        .then(() => {
-                            console.log('任务成功保存到 Firebase，数量:', tasks.length);
-                            isSyncing = false;
-                            return true;
-                        })
-                        .catch(error => {
-                            console.error('保存到 Firebase 失败:', error);
-                            console.log('但任务已保存到本地存储');
-                            isSyncing = false;
-                            return true; // 返回 true 因为已经保存到本地存储
-                        });
-                }
+                // 使用修改后的saveTasks函数（在上面定义）
                 
                 // 添加任务
                 function addTask() {
